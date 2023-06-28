@@ -5,6 +5,7 @@ pub enum Activation {
     None,
     Sigmoid,
     Relu,
+    Softmax,
 }
 
 impl Activation {
@@ -28,7 +29,9 @@ impl Activation {
                     )
                     .collect()
             }
-            _ => vec![vec![T::from(1.0); row[0].len()]; row.len()]
+            Activation::Relu => todo!("RELU DERIVATIVE HASN'T BEEN IMPLEMENTED YET"),
+            Activation::Softmax => todo!("SOFTMAX DERIVATIVE HASN'T BEEN IMPLEMENTED YET"),
+            Activation::None => vec![vec![T::from(1.0); row[0].len()]; row.len()]
         }
     }
 
@@ -36,7 +39,8 @@ impl Activation {
         match self {
             Activation::Sigmoid => Self::sigmoid(num),
             Activation::Relu => Self::relu(num),
-            _ => num
+            Activation::Softmax => todo!("SOFTMAX ACTIVATION HASN'T BEEN IMPLMENETED"),
+            Activation::None => num
         }
     }
 
