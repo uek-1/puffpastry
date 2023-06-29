@@ -1,2 +1,2 @@
 # rust-mlp
-basic rust neural network framework
+<h1>Basic rust neural network framework</h1>
