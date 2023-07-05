@@ -29,7 +29,17 @@ impl Activation {
                     )
                     .collect()
             }
-            Activation::Relu => todo!("RELU DERIVATIVE HASN'T BEEN IMPLEMENTED YET"),
+            Activation::Relu => {
+                row
+                    .iter()
+                    .map(
+                        |x| x.iter().map(
+                            |y| Self::relu_derivative(*y)
+                        )
+                        .collect()
+                    )
+                    .collect()
+            }
             Activation::Softmax => todo!("SOFTMAX DERIVATIVE HASN'T BEEN IMPLEMENTED YET"),
             Activation::None => vec![vec![T::from(1.0); row[0].len()]; row.len()]
         }
@@ -54,10 +64,28 @@ impl Activation {
     }
 
     fn relu<T : vec_tools::ValidNumber<T>>(num : T) -> T {
-        if num > T::from(0.0) {
+        if num < T::from(0.0) {
             return T::from(0.0);
         }
         num
+    }
+
+    fn relu_derivative<T : vec_tools::ValidNumber<T>>(num: T) ->T {
+        if num < T::from(0.0) {
+            return T::from(0.0)
+        }
+        T::from(1.0)
+    }
+
+    fn softmax<T : vec_tools::ValidNumber<T>>(num : T, classes : Vec<T>) -> T {
+        let top : f64 = num.into().exp(); 
+        let bottom : f64 = classes.iter().fold(0.0, |sum : f64, x : &T| sum + (*x).into().exp());
+        
+        T::from(top / bottom)
+    }
+
+    fn softmax_derivative<T: vec_tools::ValidNumber<T>>(num : T, classes : Vec<T>) -> T {
+        todo!()
     }
 }
 
