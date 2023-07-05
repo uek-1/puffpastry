@@ -55,7 +55,7 @@ impl Loss {
     
     fn categorical_cross_entropy_grad<T: ValidNumber<T>>(result: Vec<Vec<T>>, expected: Vec<Vec<T>>) -> Vec<Vec<T>> {
         // Result and expected should be column vectors! 
-
+        //
         result
             .iter()
             .zip(expected.iter())
@@ -63,25 +63,6 @@ impl Loss {
             .map(|(res, expec) : (f64,f64)| vec![T::from(-1.0 * expec * (1.0/res))])
             .collect()
     }
-
-    /* Actually, it's unlikely that I need this. The last softmax layer should be able to calculate
-    * its own loss.
-
-    fn softmax_cce<T : ValidNumber<T>>(result: Vec<T>, expected: Vec<T>) -> T {
-        let result_softmax = result
-            .clone()
-            .into_iter()
-            .map(|x| Activation::softmax(x, result.clone()));
-
-        Self::categorical_cross_entropy(result, expected)
-    }
-
-    fn softmax_cce_grad<T : ValidNumber<T>>(result: Vec<Vec<T>>, expected : Vec<Vec<T>>) -> Vec<Vec<T>> {
-        //Result and expected should be column vectors!
-        todo!()
-    }
-
-    */
 }
 
 #[cfg(test)]

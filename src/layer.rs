@@ -42,28 +42,33 @@ impl<T : vec_tools::ValidNumber<T>> Layer<T> {
     }
 
     pub fn evaluate(&self, input: &Vec<Vec<T>>) -> Vec<Vec<T>> {
-        let out = self.weights
+        let out : Vec<Vec<T>> = self.weights
             .matrix_multiply(input)
+            .transposed()
             .into_iter()
             .map(|x| x.add_vec(&self.biases))
             .map(|x| self.activation.activate_vec(x))
             .collect();
 
-        out
+        out.transposed()
     }
 
     pub fn preactivation(&self, input: &Vec<Vec<T>>) -> Vec<Vec<T>> {
         self.weights
             .matrix_multiply(input)
+            .transposed()
             .iter()
             .map(|x| x.add_vec(&self.biases))
-            .collect()
+            .collect::<Vec<Vec<T>>>()
+            .transposed()
     }
 
     pub fn activate(&self, preactivation : Vec<Vec<T>>) -> Vec<Vec<T>> {
         preactivation
+            .transposed()
             .into_iter()
             .map(|x| self.activation.activate_vec(x))
-            .collect()
+            .collect::<Vec<Vec<T>>>()
+            .transposed()
     }
 }

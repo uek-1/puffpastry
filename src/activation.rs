@@ -78,12 +78,27 @@ impl Activation {
     pub fn softmax<T : vec_tools::ValidNumber<T>>(num : T, classes : Vec<T>) -> T {
         let top : f64 = num.into().exp(); 
         let bottom : f64 = classes.iter().fold(0.0, |sum : f64, x : &T| sum + (*x).into().exp());
-        
-        T::from(top / bottom)
+        let out = T::from(top / bottom);
+
+        out
     }
 
     fn softmax_derivative<T: vec_tools::ValidNumber<T>>(num : T, classes : Vec<T>) -> T {
-        todo!()
+        let top : f64 = num.into().exp();
+        let bottom = classes.iter().fold(0.0, |sum : f64, x : &T| sum + (*x).into().exp()) - top;
+
+        T::from((bottom * top) / (bottom + top).powi(2))
     }
 }
 
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn softmax_test() {
+        let items = vec![1.0, 1.0, 1.0, 1.0];
+        let res = Activation::softmax(items[0], items);
+        assert_eq!(res, 0.25)
+    }
+}

@@ -37,6 +37,10 @@ impl<T : vec_tools::ValidNumber<T>> Model<T> {
             let a = layer.activate(z.clone());
             temp = a.clone();
 
+            if z[0][0].into().is_nan() {
+                //panic!("NAN");
+            }
+
             z_steps.push(z);
             a_steps.push(a);
         }
@@ -102,7 +106,7 @@ impl<T : vec_tools::ValidNumber<T>> Model<T> {
     }
 
     pub fn update_weights(&mut self, weight_updates: Vec<Vec<Vec<T>>>, learning_rate : T) {
-        //println!("\nUPDATING WEIGHTS {:?} with {:?} \n", self, weight_updates);
+        //println!("\nUPDATING WEIGHTS {:?} with {:?} \n", self.layers.last(), weight_updates.first());
         let mut weight_updates = weight_updates;
 
         for layer in 0..self.layers.len() {
