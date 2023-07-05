@@ -48,6 +48,7 @@ impl<T : vec_tools::ValidNumber<T>> Layer<T> {
             .map(|x| x.add_vec(&self.biases))
             .map(|x| self.activation.activate_vec(x))
             .collect();
+
         out
     }
 

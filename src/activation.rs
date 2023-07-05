@@ -9,40 +9,38 @@ pub enum Activation {
 }
 
 impl Activation {
-    pub fn activate_vec<T : vec_tools::ValidNumber<T>>(&self, row : Vec<T>) -> Vec<T> {
-        row
+    pub fn activate_vec<T : vec_tools::ValidNumber<T>>(&self, preactivations : Vec<T>) -> Vec<T> {
+        preactivations
             .iter()
-            .map(|num| self.activate_num(*num))
+            .map(|num| {
+                match self {
+                    Activation::None => *num,
+                    Activation::Relu => Self::relu(*num),
+                    Activation::Sigmoid => Self::sigmoid(*num),
+                    Activation::Softmax => Self::softmax(*num, preactivations.clone())
+                }
+            })
             .collect()
     } 
 
-    pub fn derivative<T: vec_tools::ValidNumber<T>>(&self, row : Vec<Vec<T>>) -> Vec<Vec<T>> {
-        match self {
-            Activation::Sigmoid => {
-                row
-                    .iter()
-                    .map(
-                        |x| x.iter().map(
-                            |y| Self::sigmoid_derivative(*y)
-                        )
-                        .collect()
+    pub fn derivative<T: vec_tools::ValidNumber<T>>(&self, preactivations : Vec<Vec<T>>) -> Vec<Vec<T>> {
+        preactivations
+            .iter()
+            .map(
+                |x| x.iter().map(
+                    |y|{ 
+                        match self {
+                            Activation::Sigmoid => Self::sigmoid_derivative(*y),
+                            Activation::Relu => Self::relu_derivative(*y),
+                            Activation::None => T::from(1.0),
+                            Activation::Softmax => Self::softmax_derivative(*y, x.clone()),
+                            _ => todo!("Invalid")
+                        }
+                    }
                     )
                     .collect()
-            }
-            Activation::Relu => {
-                row
-                    .iter()
-                    .map(
-                        |x| x.iter().map(
-                            |y| Self::relu_derivative(*y)
-                        )
-                        .collect()
-                    )
-                    .collect()
-            }
-            Activation::Softmax => todo!("SOFTMAX DERIVATIVE HASN'T BEEN IMPLEMENTED YET"),
-            Activation::None => vec![vec![T::from(1.0); row[0].len()]; row.len()]
-        }
+            )
+            .collect()
     }
 
     pub fn activate_num<T : vec_tools::ValidNumber<T>>(&self, num : T) -> T {
@@ -77,7 +75,7 @@ impl Activation {
         T::from(1.0)
     }
 
-    fn softmax<T : vec_tools::ValidNumber<T>>(num : T, classes : Vec<T>) -> T {
+    pub fn softmax<T : vec_tools::ValidNumber<T>>(num : T, classes : Vec<T>) -> T {
         let top : f64 = num.into().exp(); 
         let bottom : f64 = classes.iter().fold(0.0, |sum : f64, x : &T| sum + (*x).into().exp());
         
