@@ -1,4 +1,4 @@
-use crate::vec_tools;
+use crate::vec_tools::{self, Transpose};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Activation {
@@ -25,6 +25,7 @@ impl Activation {
 
     pub fn derivative<T: vec_tools::ValidNumber<T>>(&self, preactivations : Vec<Vec<T>>) -> Vec<Vec<T>> {
         preactivations
+            .transposed()
             .iter()
             .map(
                 |x| x.iter().map(
@@ -40,7 +41,8 @@ impl Activation {
                     )
                     .collect()
             )
-            .collect()
+            .collect::<Vec<Vec<T>>>()
+            .transposed()
     }
 
     pub fn activate_num<T : vec_tools::ValidNumber<T>>(&self, num : T) -> T {
@@ -80,14 +82,19 @@ impl Activation {
         let bottom : f64 = classes.iter().fold(0.0, |sum : f64, x : &T| sum + (*x).into().exp());
         let out = T::from(top / bottom);
 
+        //println!("softmax ({:?}, {:?}) = {:?}", num, classes, out);
+
         out
     }
 
     fn softmax_derivative<T: vec_tools::ValidNumber<T>>(num : T, classes : Vec<T>) -> T {
         let top : f64 = num.into().exp();
         let bottom = classes.iter().fold(0.0, |sum : f64, x : &T| sum + (*x).into().exp()) - top;
+        let out = T::from((bottom * top) / (bottom + top).powi(2));
 
-        T::from((bottom * top) / (bottom + top).powi(2))
+        //println!("sd({num:?}, {classes:?}) = {:?}", out );
+
+        out
     }
 }
 
