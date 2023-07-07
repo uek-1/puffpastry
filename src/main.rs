@@ -15,8 +15,8 @@ use loss::Loss;
 fn main () {
     let mut model : Model<f64> = Model {
         layers: vec![
-            Layer::from_size(784, 64, Activation::Sigmoid),
-            Layer::from_size(64, 10, Activation::Softmax),
+            Layer::from_size(784, 512, Activation::None),
+            Layer::from_size(512, 10, Activation::Softmax),
         ],
         loss : Loss::CategoricalCrossEntropy,
     };
@@ -30,7 +30,7 @@ fn main () {
     let labels = 10;
 
     for (num, record) in mnist_reader.records().enumerate() { 
-        if num > 10000 {
+        if num > 1 {
             break;
         }
 
@@ -50,7 +50,7 @@ fn main () {
             train.push(
                 x.into_iter()
                     .skip(1)
-                    .map(|x| x.parse().unwrap())
+                    .map(|x| x.parse::<f64>().unwrap() / 255.0)
                     .collect()
             );
         }
@@ -58,7 +58,7 @@ fn main () {
 
     println!("{:?} \n {}", validate[0].to_vec(), Pretty(train[0].to_vec()));
  
-    model.fit(train.clone(), validate.clone(), 5, 0.9);
+    model.fit(train.clone(), validate.clone(), 5, 0.000002);
 
     println!("trained model : \n");
     //println!("{:?}", model);
@@ -68,13 +68,6 @@ fn main () {
     println!("{:?}", res);
     println!("Calculated loss for this input {:?}", model.loss.calculate_loss(res, validate[5].clone()));
     
-}
-
-fn mnist_normalize(values: &Vec<f64>) -> Vec<f64> {
-    values
-        .into_iter()
-        .map(|x| x / 255.0)
-        .collect()
 }
 
 pub struct Pretty(Vec<f64>);

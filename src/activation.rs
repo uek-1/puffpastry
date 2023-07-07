@@ -78,21 +78,30 @@ impl Activation {
     }
 
     pub fn softmax<T : vec_tools::ValidNumber<T>>(num : T, classes : Vec<T>) -> T {
-        let top : f64 = num.into().exp(); 
-        let bottom : f64 = classes.iter().fold(0.0, |sum : f64, x : &T| sum + (*x).into().exp());
+        // To saturate to zero instead of infinity, subtract max(classes) from top and bottom.
+        let max_classes : f64 = classes
+            .iter()
+            .map(|x| (*x).into())
+            .max_by(|a, b| a.total_cmp(b))
+            .unwrap();
+
+        let top : f64 = (num.into() - max_classes).exp(); 
+        let bottom : f64 = classes
+            .iter()
+            .fold(0.0, |sum : f64, x : &T| sum + ((*x).into() - max_classes).exp());
         let out = T::from(top / bottom);
 
-        //println!("softmax ({:?}, {:?}) = {:?}", num, classes, out);
+        println!("softmax ({:?}, {:?}) = {:?}", top, bottom, out);
+        //println!("max_classes - {max_classes}");
 
         out
     }
 
     fn softmax_derivative<T: vec_tools::ValidNumber<T>>(num : T, classes : Vec<T>) -> T {
-        let top : f64 = num.into().exp();
-        let bottom = classes.iter().fold(0.0, |sum : f64, x : &T| sum + (*x).into().exp()) - top;
-        let out = T::from((bottom * top) / (bottom + top).powi(2));
+        let smax = Activation::softmax(num, classes.clone());
+        let out = smax * (T::from(1.0) - smax);
 
-        //println!("sd({num:?}, {classes:?}) = {:?}", out );
+        println!("sd({num:?}, {classes:?}) = {:?}", out );
 
         out
     }
@@ -104,8 +113,16 @@ mod test {
 
     #[test]
     fn softmax_test() {
-        let items = vec![1.0, 1.0, 1.0, 1.0];
+        let items = vec![1.0, 2.0, 3.0];
         let res = Activation::softmax(items[0], items);
-        assert_eq!(res, 0.25)
+        assert_eq!(res, 0.09003057)
+        // close eneough.
+    }
+
+    #[test]
+    fn softmax_derivative_test() {
+        let classes = vec![3.0, 4.0, 5.0];
+        let res = Activation::softmax_derivative(classes[0], classes);
+        assert_eq!(res, 3.0);
     }
 }

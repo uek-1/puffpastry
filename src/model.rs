@@ -93,6 +93,7 @@ impl<T : vec_tools::ValidNumber<T>> Model<T> {
 
     pub fn one_pass(&self, input: &Vec<T>, output: &Vec<T>) -> (Vec<Vec<Vec<T>>>, T){
         let result = self.evaluate(input);
+        //println!("\nRES {result:?} \n REAL {output:?}\n");
         let loss : T =  self.loss.calculate_loss(result, output.to_vec()); 
 
         let (z_steps, mut a_steps) = self.forward_pass(input);
