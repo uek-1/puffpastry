@@ -98,6 +98,10 @@ impl Activation {
     }
 
     fn softmax_derivative<T: vec_tools::ValidNumber<T>>(num : T, classes : Vec<T>) -> T {
+        //ERROR: Softmax has {classes.len()} outputs and input nerons which are all codependent. Here we
+        //only calculate the effect an input neuron has on its respective output activation,
+        //ignoring the fact that the input neuron affects all {classes.len()} outputs.
+        
         let smax = Activation::softmax(num, classes.clone());
         let out = smax * (T::from(1.0) - smax);
 
