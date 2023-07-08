@@ -56,13 +56,13 @@ impl<T : vec_tools::ValidNumber<T>> Model<T> {
         let mut step_gradient = loss_gradient;
         
         for layer in self.layers.iter().rev() {
-            let current_z = z_steps.pop().expect("Backprop couldn't find required preactivations!");
-            let previous_a = a_steps.pop().expect("Backprop couldn't find required activations!");
+            let current_preactivation = z_steps.pop().expect("Backprop couldn't find required preactivations!");
+            let previous_activation = a_steps.pop().expect("Backprop couldn't find required activations!");
             //println!("backprop using z: {:?}, a: {:?}", current_z, previous_a); 
             
             // Column vector
             //println!("CALCULATING dz/da");
-            let dz_da = match prev_layer.to_owned() {
+            let partial_prevpreactiv_activation = match prev_layer.to_owned() {
                 Some(prev) => prev.weights.transposed().matrix_multiply(&step_gradient),
                 None => step_gradient,
             };
@@ -71,19 +71,19 @@ impl<T : vec_tools::ValidNumber<T>> Model<T> {
 
             // Column vector
             //println!("CALCULATING da/dz");
-            let da_dz : Vec<Vec<T>> = layer.activation.derivative(current_z);
+            let partial_activation_preactiv : Vec<Vec<T>> = layer.activation.derivative(current_preactivation);
             //println!("{:?}", da_dz);
 
             // Elementwise multiply (Hadamard product)
             //println!("CALCULATING dj/dz");
-            step_gradient = dz_da.elementwise_multiply(&da_dz);
+            step_gradient = partial_prevpreactiv_activation.elementwise_multiply(&partial_activation_preactiv);
             //println!("{:?}", step_gradient);
             
             // Multiply by respective previous layers' activation
             //println!("CALCULATING dj/dw");
-            let dj_dw : Vec<Vec<T>> = step_gradient.matrix_multiply(&previous_a.transposed());
+            let partial_loss_weight : Vec<Vec<T>> = step_gradient.matrix_multiply(&previous_activation.transposed());
             //println!("{:?} \n", dj_dw);
-            weight_updates.push(dj_dw); 
+            weight_updates.push(partial_loss_weight); 
             prev_layer = Some(layer.clone());
         }
             
