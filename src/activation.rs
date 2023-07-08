@@ -79,16 +79,16 @@ impl Activation {
 
     pub fn softmax<T : vec_tools::ValidNumber<T>>(num : T, classes : Vec<T>) -> T {
         // To saturate to zero instead of infinity, subtract max(classes) from top and bottom.
-        let max_classes : f64 = classes
+        /*let max_classes : f64 = classes
             .iter()
             .map(|x| (*x).into())
             .max_by(|a, b| a.total_cmp(b))
             .unwrap();
-
-        let top : f64 = (num.into() - max_classes).exp(); 
+        */
+        let top : f64 = (num.into() - 0.0).exp(); 
         let bottom : f64 = classes
             .iter()
-            .fold(0.0, |sum : f64, x : &T| sum + ((*x).into() - max_classes).exp());
+            .fold(0.0, |sum : f64, x : &T| sum + ((*x).into() - 0.0).exp());
         let out = T::from(top / bottom);
 
         //println!("softmax ({:?}, {:?}) = {:?}", top, bottom, out);
@@ -115,7 +115,7 @@ mod test {
     fn softmax_test() {
         let items = vec![1.0, 2.0, 3.0];
         let res = Activation::softmax(items[0], items);
-        assert_eq!(res, 0.09003057)
+        assert!( (res - 0.09003057).abs() < 0.001)
         // close eneough.
     }
 
@@ -123,6 +123,6 @@ mod test {
     fn softmax_derivative_test() {
         let classes = vec![3.0, 4.0, 5.0];
         let res = Activation::softmax_derivative(classes[0], classes);
-        assert_eq!(res, 3.0);
+        assert!( (res - 0.08192506).abs() < 0.001);
     }
 }

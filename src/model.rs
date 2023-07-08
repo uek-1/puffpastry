@@ -143,7 +143,7 @@ impl<T : vec_tools::ValidNumber<T>> Model<T> {
                     match (update[neuron][weight] - res).into().abs() < epsilon {
                         true => (),
                         false => {
-                            println!("Gradient checking failed : weight: {:?} res: {:?}", update[neuron][weight], res);
+                            println!("Gradient checking failed : layer: {} neuron: {} weight: {:?} res: {:?} output{:?}", layer, neuron, update[neuron][weight], res, output);
                             assert!(false)
                         }
                     }
@@ -167,7 +167,7 @@ impl<T : vec_tools::ValidNumber<T>> Model<T> {
                 //println!("train input - {:?} output - {:?}", input, output);
                 let (weight_updates, loss) = self.one_pass(input, output);
                 //println!("INPUT {inputs:?} LOSS {loss:?}");
-                self.gradient_check(weight_updates.clone(), input, output, 0.001);
+                self.gradient_check(weight_updates.clone(), input, output, 0.00001);
                 self.update_weights(weight_updates, learning_rate);
                 
                 average_loss += loss.into();
