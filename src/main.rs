@@ -15,8 +15,8 @@ use loss::Loss;
 fn main () {
     let mut model : Model<f64> = Model {
         layers: vec![
-            Layer::from_size(784, 512, Activation::None),
-            Layer::from_size(512, 10, Activation::Softmax),
+            Layer::from_size(784, 128, Activation::Sigmoid),
+            Layer::from_size(128, 10, Activation::Softmax),
         ],
         loss : Loss::CategoricalCrossEntropy,
     };
@@ -30,7 +30,7 @@ fn main () {
     let labels = 10;
 
     for (num, record) in mnist_reader.records().enumerate() { 
-        if num > 1 {
+        if num > 5 {
             break;
         }
 
@@ -58,7 +58,7 @@ fn main () {
 
     println!("{:?} \n {}", validate[0].to_vec(), Pretty(train[0].to_vec()));
  
-    model.fit(train.clone(), validate.clone(), 5, 0.000002);
+    model.fit(train.clone(), validate.clone(), 5, 0.2);
 
     println!("trained model : \n");
     //println!("{:?}", model);

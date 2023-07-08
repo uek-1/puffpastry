@@ -120,6 +120,41 @@ impl<T : vec_tools::ValidNumber<T>> Model<T> {
         }
     }
 
+    pub fn gradient_check(&self, mut weight_updates: Vec<Vec<Vec<T>>>, input: &Vec<T>, output: &Vec<T>, epsilon : f64) {
+        // VERY INTENSIVE! WILL SLOW DOWN NETWORK SIGNFICANTLY!
+        for layer in 0..self.layers.len() {
+            let update = weight_updates.pop().expect("Couldn't find weight updates for layer {layer}");
+            for neuron in 0..self.layers[layer].weights.len() {
+                for weight in 0..self.layers[layer].weights[neuron].len() {
+                    match (neuron, weight) {
+                        (x,y) if x > 5 || y > 5 => continue,
+                        _ => (),
+                    }
+
+                    let mut alt = self.clone();
+                    alt.layers[layer].weights[neuron][weight] = alt.layers[layer].weights[neuron][weight] + T::from(epsilon);
+                    let (_, inc) = alt.one_pass(input, output);
+
+                    let mut alt = self.clone();
+                    alt.layers[layer].weights[neuron][weight] = alt.layers[layer].weights[neuron][weight] - T::from(epsilon * 2.0);
+                    let (_, dec) = alt.one_pass(input, output);
+
+                    let res = (inc - dec) / T::from(2.0 * epsilon);
+                    match (update[neuron][weight] - res).into().abs() < epsilon {
+                        true => (),
+                        false => {
+                            println!("Gradient checking failed : weight: {:?} res: {:?}", update[neuron][weight], res);
+                            assert!(false)
+                        }
+                    }
+                }
+            }
+
+
+        }
+
+    }
+
     pub fn fit(&mut self, train : Vec<Vec<T>>, validate : Vec<Vec<T>>, epochs : usize, learning_rate: T) {
         let data_iter = train
             .iter()
@@ -132,6 +167,7 @@ impl<T : vec_tools::ValidNumber<T>> Model<T> {
                 //println!("train input - {:?} output - {:?}", input, output);
                 let (weight_updates, loss) = self.one_pass(input, output);
                 //println!("INPUT {inputs:?} LOSS {loss:?}");
+                self.gradient_check(weight_updates.clone(), input, output, 0.001);
                 self.update_weights(weight_updates, learning_rate);
                 
                 average_loss += loss.into();

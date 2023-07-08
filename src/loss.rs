@@ -39,7 +39,13 @@ impl Loss {
             .zip(expected.into_iter())
             .map(|(res, expec)| (res.into(), expec.into()))
             .find(|(_, expec) : & (f64, f64)| *expec == 1.0)
-            .and_then(|(res, _)| Some(T::from(res.ln())))
+            .and_then(|(res, _)| { // clipped to 1000.0
+                let out = res.ln();
+                if 1000.0 < -1.0 * out || out.is_nan() {
+                    return Some(T::from(-1000.0))
+                }
+                Some(T::from(out))
+            })
             .unwrap()    
     }
 
@@ -55,12 +61,21 @@ impl Loss {
     
     fn categorical_cross_entropy_grad<T: ValidNumber<T>>(result: Vec<Vec<T>>, expected: Vec<Vec<T>>) -> Vec<Vec<T>> {
         // Result and expected should be column vectors! 
-        //
+        // clipped to 1000.0 as max
         result
             .iter()
             .zip(expected.iter())
             .map(|(res, expec)| (res[0].into(), expec[0].into()))
-            .map(|(res, expec) : (f64,f64)| vec![T::from(-1.0 * expec * (1.0/res))])
+            .map(|(res, expec) : (f64,f64)| vec![
+                T::from(
+                    if 1000.0 < expec * (1.0/res) || (1.0/res).is_nan() {
+                        -1000.0
+                    }
+                    else {
+                        -1.0 * expec * (1.0/res)
+                    }
+                )
+            ])
             .collect()
     }
 }

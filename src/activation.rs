@@ -91,7 +91,7 @@ impl Activation {
             .fold(0.0, |sum : f64, x : &T| sum + ((*x).into() - max_classes).exp());
         let out = T::from(top / bottom);
 
-        println!("softmax ({:?}, {:?}) = {:?}", top, bottom, out);
+        //println!("softmax ({:?}, {:?}) = {:?}", top, bottom, out);
         //println!("max_classes - {max_classes}");
 
         out
@@ -101,7 +101,7 @@ impl Activation {
         let smax = Activation::softmax(num, classes.clone());
         let out = smax * (T::from(1.0) - smax);
 
-        println!("sd({num:?}, {classes:?}) = {:?}", out );
+        //println!("sd({num:?}, {classes:?}) = {:?}", out );
 
         out
     }
