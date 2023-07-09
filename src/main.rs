@@ -89,3 +89,38 @@ impl fmt::Display for Pretty {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn xor_test() {
+        let mut model : Model<f64> = Model {
+            layers: vec![
+                Layer::from_size(2, 2, Activation::None),
+                Layer::from_size(2,1, Activation::Sigmoid)
+            ],
+            loss: Loss::MeanSquaredError
+        };
+
+        let train = vec![
+            vec![0.0, 0.0],
+            vec![0.0, 1.0],
+            vec![1.0, 0.0],
+            vec![1.0, 1.0]
+        ];
+
+        let validate = vec![
+            vec![0.0],
+            vec![1.0],
+            vec![1.0],
+            vec![0.0]
+        ];
+
+        model.fit(train, validate, 10000, 1.2);
+        
+        assert!(model.evaluate(&vec![0.0, 1.0])[0] > 0.8);
+        assert!(model.evaluate(&vec![1.0, 1.0])[0] < 0.3);
+    }
+}

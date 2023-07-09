@@ -55,7 +55,7 @@ impl<T : vec_tools::ValidNumber<T>> Model<T> {
         let mut prev_layer : Option<Layer<T>> = None;
         let mut step_gradient = loss_gradient;
         
-        for layer in self.layers.iter().rev() {
+        for (num, layer) in self.layers.iter().rev().enumerate() {
             let current_preactivation = z_steps.pop().expect("Backprop couldn't find required preactivations!");
             let previous_activation = a_steps.pop().expect("Backprop couldn't find required activations!");
             //println!("backprop using z: {:?}, a: {:?}", current_z, previous_a); 
@@ -74,9 +74,21 @@ impl<T : vec_tools::ValidNumber<T>> Model<T> {
             let partial_activation_preactiv : Vec<Vec<T>> = layer.activation.derivative(current_preactivation);
             //println!("{:?}", da_dz);
 
-            // Elementwise multiply (Hadamard product)
+            // Elementwise multiply - Hadamard product, unless it's the last layer (first
+            // iteration). Then pick between matmul / elementwise depending on sizes.
             //println!("CALCULATING dj/dz");
-            step_gradient = partial_prevpreactiv_activation.elementwise_multiply(&partial_activation_preactiv);
+            match num {
+                0 => {
+                    // check matrix dimensions
+                    if partial_prevpreactiv_activation.len() == partial_activation_preactiv.len() && partial_activation_preactiv[0].len() == partial_prevpreactiv_activation[0].len() {
+                        step_gradient = partial_activation_preactiv.elementwise_multiply(&partial_prevpreactiv_activation)
+                    }
+                    else {
+                        step_gradient = partial_activation_preactiv.matrix_multiply(&partial_prevpreactiv_activation)
+                    }
+                },
+                _ => step_gradient = partial_activation_preactiv.elementwise_multiply(&partial_prevpreactiv_activation)
+            };
             //println!("{:?}", step_gradient);
             
             // Multiply by respective previous layers' activation
@@ -107,7 +119,7 @@ impl<T : vec_tools::ValidNumber<T>> Model<T> {
     }
 
     pub fn update_weights(&mut self, weight_updates: Vec<Vec<Vec<T>>>, learning_rate : T) {
-        //println!("\nUPDATING WEIGHTS {:?} with {:?} \n", self.layers.last(), weight_updates.first());
+        println!("\nUPDATING WEIGHTS {:?} with {:?} \n", self.layers.last(), weight_updates.first());
         let mut weight_updates = weight_updates;
 
         for layer in 0..self.layers.len() {
@@ -167,7 +179,7 @@ impl<T : vec_tools::ValidNumber<T>> Model<T> {
                 //println!("train input - {:?} output - {:?}", input, output);
                 let (weight_updates, loss) = self.one_pass(input, output);
                 //println!("INPUT {inputs:?} LOSS {loss:?}");
-                self.gradient_check(weight_updates.clone(), input, output, 0.00001);
+                //self.gradient_check(weight_updates.clone(), input, output, 0.00001);
                 self.update_weights(weight_updates, learning_rate);
                 
                 average_loss += loss.into();
