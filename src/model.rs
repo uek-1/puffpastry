@@ -85,10 +85,10 @@ impl<T: vec_tools::ValidNumber<T>> Model<T> {
             match num {
                 0 => {
                     // check matrix dimensions
-                    if partial_prevpreactiv_activation.len() == partial_activation_preactiv.len()
-                        && partial_activation_preactiv[0].len()
-                            == partial_prevpreactiv_activation[0].len()
-                    {
+                    if Self::matrix_equal_dims(
+                        &partial_activation_preactiv,
+                        &partial_prevpreactiv_activation,
+                    ) {
                         step_gradient = partial_activation_preactiv
                             .elementwise_multiply(&partial_prevpreactiv_activation)
                     } else {
@@ -101,7 +101,7 @@ impl<T: vec_tools::ValidNumber<T>> Model<T> {
                         .elementwise_multiply(&partial_prevpreactiv_activation)
                 }
             };
-            //println!("{:?}", step_gradient);
+            // println!("\n dj/dz {:?}\n\n", step_gradient);
 
             // Multiply by respective previous layers' activation
             //println!("CALCULATING dj/dw");
@@ -115,6 +115,26 @@ impl<T: vec_tools::ValidNumber<T>> Model<T> {
 
         // Note weight updates stores the LAST layers' weight FIRST!
         weight_updates
+    }
+
+    fn matrix_equal_dims(left: &Vec<Vec<T>>, right: &Vec<Vec<T>>) -> bool {
+        // println!("\nda/dz \n{left:?} \ndj/da \n{right:?}");
+
+        if left.len() != right.len() {
+            return false;
+        }
+
+        if left.len() == 0 || right.len() == 0 {
+            return false;
+        }
+
+        if left[0].len() != right[0].len() {
+            return false;
+        }
+
+        // println!("EQUAL");
+
+        true
     }
 
     pub fn one_pass(&self, input: &Vec<T>, output: &Vec<T>) -> (Vec<Vec<Vec<T>>>, T) {
@@ -185,7 +205,7 @@ impl<T: vec_tools::ValidNumber<T>> Model<T> {
                     match (update[neuron][weight] - res).into().abs() < epsilon {
                         true => (),
                         false => {
-                            panic!("Gradient checking failed : layer: {} neuron: {} weight: {:?} finite_difference: {:?} output{:?}", layer, neuron, update[neuron][weight], res, output);
+                            panic!("Gradient checking failed : layer: {:?} {:?},  neuron: {} weight: {:?} finite_difference: {:?} output{:?}", layer, self.layers[layer].activation, neuron, update[neuron][weight], res, output);
                         }
                     }
                 }
@@ -208,8 +228,8 @@ impl<T: vec_tools::ValidNumber<T>> Model<T> {
             for (input, output) in data_iter.clone() {
                 //println!("train input - {:?} output - {:?}", input, output);
                 let (weight_updates, loss) = self.one_pass(input, output);
-                println!("INPUT {inputs:?} LOSS {loss:?}");
-                // self.gradient_check(weight_updates.clone(), input, output, 0.001);
+                // println!("INPUT {inputs:?} LOSS {loss:?}");
+                // self.gradient_check(weight_updates.clone(), input, output, 0.01);
                 self.update_weights(weight_updates, learning_rate);
 
                 average_loss += loss.into();

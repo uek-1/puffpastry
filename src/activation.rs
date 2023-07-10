@@ -108,10 +108,12 @@ impl Activation {
             .map(|(idx, output)| {
                 let smax_output = Self::softmax(*output, classes.clone());
                 let smax_input = Self::softmax(classes[neuron], classes.clone());
-                let delta = match idx {
-                    neuron => T::from(1.0),
-                    _ => T::from(0.0),
+                let delta = match idx == neuron {
+                    true => T::from(1.0),
+                    false => T::from(0.0),
                 };
+
+                // println!("si {smax_input:?}, so {smax_output:?}, delta {delta:?}, idx {idx:?} neuron {neuron}");
 
                 smax_output * (delta - smax_input)
             })
@@ -121,6 +123,8 @@ impl Activation {
 
 #[cfg(test)]
 mod test {
+    use crate::vec_tools::MatrixMultiply;
+
     use super::*;
 
     #[test]
@@ -136,5 +140,38 @@ mod test {
         let classes = vec![3.0, 4.0, 5.0];
         let res = Activation::softmax_derivative(0, classes);
         assert!((res[0] - 0.08192506).abs() < 0.001);
+    }
+
+    #[test]
+    fn softmax_derivative_vector_test() {
+        let classes = vec![1.0, 2.0, 3.0];
+        let res = Activation::softmax_derivative(0, classes);
+        println!("{res:?}");
+
+        let error = res
+            .into_iter()
+            .zip([0.08192, -0.02203, -0.059892])
+            .fold(0.0, |err, (res, expec)| err + (expec - res).abs());
+
+        assert!(error < 0.001)
+    }
+
+    #[test]
+    fn total_softmax_derivative_test() {
+        let preactivations = vec![1.0, 2.0, 3.0];
+        let res = Activation::Softmax.derivative(vec![preactivations].transposed());
+        println!("{:?}", res);
+
+        let truth = vec![
+            vec![0.0819, -0.0220, -0.0598],
+            vec![-0.0220, 0.1848, -0.1628],
+            vec![-0.0598, -0.1628, 0.2226],
+        ];
+
+        for i in 0..truth.len() {
+            for j in 0..truth[i].len() {
+                assert!((res[i][j] - truth[i][j]).abs() < 0.01);
+            }
+        }
     }
 }

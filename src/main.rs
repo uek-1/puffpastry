@@ -14,10 +14,7 @@ use loss::Loss;
 
 fn main() {
     let mut model: Model<f64> = Model {
-        layers: vec![
-            Layer::from_size(784, 128, Activation::Sigmoid),
-            Layer::from_size(128, 10, Activation::Softmax),
-        ],
+        layers: vec![Layer::from_size(784, 10, Activation::Softmax)],
         loss: Loss::CategoricalCrossEntropy,
     };
 
@@ -30,7 +27,7 @@ fn main() {
     let labels = 10;
 
     for (num, record) in mnist_reader.records().enumerate() {
-        if num > 5 {
+        if num > 60000 {
             break;
         }
 
@@ -62,22 +59,25 @@ fn main() {
         Pretty(train[0].to_vec())
     );
 
-    model.fit(train.clone(), validate.clone(), 5, 0.2);
+    model.fit(train.clone(), validate.clone(), 5, 0.002);
 
     println!("trained model : \n");
     //println!("{:?}", model);
 
-    println!(
-        "testing on input {:?} : \n {}",
-        validate[5].clone(),
-        Pretty(train[5].clone())
-    );
-    let res = model.evaluate(&train[5]);
-    println!("{:?}", res);
-    println!(
-        "Calculated loss for this input {:?}",
-        model.loss.calculate_loss(res, validate[5].clone())
-    );
+    for i in 0..10 {
+        println!(
+            "testing on input {:?} : \n {}",
+            validate[i].clone(),
+            Pretty(train[i].clone())
+        );
+
+        let res = model.evaluate(&train[i]);
+        println!("{:?}", res);
+        println!(
+            "Calculated loss for this input {:?}",
+            model.loss.calculate_loss(res, validate[i].clone())
+        );
+    }
 }
 
 pub struct Pretty(Vec<f64>);
