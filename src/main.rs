@@ -123,7 +123,7 @@ mod test {
 
         let validate = vec![vec![0.0], vec![1.0], vec![1.0], vec![0.0]];
 
-        model.fit(train, validate, 1000, 1.2);
+        model.fit(train, validate, 100, 1.2);
 
         let res = model.evaluate(&vec![0.0, 1.0])[0];
         println!("0 XOR 1 = {res}");

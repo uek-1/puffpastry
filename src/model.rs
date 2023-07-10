@@ -55,7 +55,7 @@ impl<T: vec_tools::ValidNumber<T>> Model<T> {
         let mut step_gradient = loss_gradient;
 
         for (num, layer) in self.layers.iter().rev().enumerate() {
-            println!("{num}");
+            // println!("{num}");
             let current_preactivation = z_steps
                 .pop()
                 .expect("Backprop couldn't find required preactivations!");
@@ -109,7 +109,7 @@ impl<T: vec_tools::ValidNumber<T>> Model<T> {
                 step_gradient.matrix_multiply(&previous_activation.transposed());
             //println!("{:?} \n", dj_dw);
             weight_updates.push(partial_loss_weight);
-            println!("{weight_updates:?}");
+            // println!("{weight_updates:?}");
             prev_layer = Some(layer.clone());
         }
 
@@ -137,10 +137,6 @@ impl<T: vec_tools::ValidNumber<T>> Model<T> {
     }
 
     pub fn update_weights(&mut self, weight_updates: Vec<Vec<Vec<T>>>, learning_rate: T) {
-        // println!(
-        //     "\nUPDATING WEIGHTS {:?} with {:?} \n",
-        //     self.layers, weight_updates
-        // );
         let mut weight_updates = weight_updates;
 
         for layer in 0..self.layers.len() {
@@ -182,15 +178,14 @@ impl<T: vec_tools::ValidNumber<T>> Model<T> {
 
                     let mut alt = self.clone();
                     alt.layers[layer].weights[neuron][weight] =
-                        alt.layers[layer].weights[neuron][weight] - T::from(epsilon * 2.0);
+                        alt.layers[layer].weights[neuron][weight] - T::from(epsilon);
                     let (_, dec) = alt.one_pass(input, output);
 
                     let res = (inc - dec) / T::from(2.0 * epsilon);
                     match (update[neuron][weight] - res).into().abs() < epsilon {
                         true => (),
                         false => {
-                            println!("Gradient checking failed : layer: {} neuron: {} weight: {:?} res: {:?} output{:?}", layer, neuron, update[neuron][weight], res, output);
-                            assert!(false)
+                            panic!("Gradient checking failed : layer: {} neuron: {} weight: {:?} finite_difference: {:?} output{:?}", layer, neuron, update[neuron][weight], res, output);
                         }
                     }
                 }
@@ -213,8 +208,8 @@ impl<T: vec_tools::ValidNumber<T>> Model<T> {
             for (input, output) in data_iter.clone() {
                 //println!("train input - {:?} output - {:?}", input, output);
                 let (weight_updates, loss) = self.one_pass(input, output);
-                //println!("INPUT {inputs:?} LOSS {loss:?}");
-                //self.gradient_check(weight_updates.clone(), input, output, 0.00001);
+                println!("INPUT {inputs:?} LOSS {loss:?}");
+                // self.gradient_check(weight_updates.clone(), input, output, 0.001);
                 self.update_weights(weight_updates, learning_rate);
 
                 average_loss += loss.into();

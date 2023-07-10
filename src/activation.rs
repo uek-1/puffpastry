@@ -25,25 +25,25 @@ impl Activation {
         &self,
         preactivations: Vec<Vec<T>>,
     ) -> Vec<Vec<T>> {
-        //println!("pre {:?}", preactivations);
         preactivations
             .transposed()
             .iter()
             .map(|x| {
                 x.iter()
-                    .map(|y| match self {
-                        Activation::Sigmoid => Self::sigmoid_derivative(*y)[0],
-                        Activation::Relu => Self::relu_derivative(*y)[0],
-                        Activation::None => vec![T::from(1.0)][0],
-                        Activation::Softmax => Self::softmax_derivative(*y, x.clone())[0],
-                        _ => todo!("Invalid"),
+                    .enumerate()
+                    .map(|(num, y)| match self {
+                        Activation::Sigmoid => Self::sigmoid_derivative(*y),
+                        Activation::Relu => Self::relu_derivative(*y),
+                        Activation::None => vec![T::from(1.0)],
+                        Activation::Softmax => Self::softmax_derivative(num, x.clone()),
                     })
-                    .collect::<Vec<T>>()
+                    .collect::<Vec<Vec<T>>>()
                     .clone()
             })
-            // .inspect(|x| println!("{:?}", x))
-            .collect::<Vec<Vec<T>>>()
-            .transposed()
+            .collect::<Vec<Vec<Vec<T>>>>()
+            .get(0)
+            .cloned()
+            .unwrap()
     }
 
     pub fn activate_num<T: vec_tools::ValidNumber<T>>(&self, num: T) -> T {
@@ -98,17 +98,24 @@ impl Activation {
         out
     }
 
-    fn softmax_derivative<T: vec_tools::ValidNumber<T>>(num: T, classes: Vec<T>) -> Vec<T> {
+    fn softmax_derivative<T: vec_tools::ValidNumber<T>>(neuron: usize, classes: Vec<T>) -> Vec<T> {
         //ERROR: Softmax has {classes.len()} outputs and input nerons which are all codependent. Here we
         //only calculate the effect an input neuron has on its respective output activation,
         //ignoring the fact that the input neuron affects all {classes.len()} outputs.
+        classes
+            .iter()
+            .enumerate()
+            .map(|(idx, output)| {
+                let smax_output = Self::softmax(*output, classes.clone());
+                let smax_input = Self::softmax(classes[neuron], classes.clone());
+                let delta = match idx {
+                    neuron => T::from(1.0),
+                    _ => T::from(0.0),
+                };
 
-        let smax = Activation::softmax(num, classes.clone());
-        let out = smax * (T::from(1.0) - smax);
-
-        //println!("sd({num:?}, {classes:?}) = {:?}", out );
-
-        vec![out]
+                smax_output * (delta - smax_input)
+            })
+            .collect()
     }
 }
 
@@ -127,7 +134,7 @@ mod test {
     #[test]
     fn softmax_derivative_test() {
         let classes = vec![3.0, 4.0, 5.0];
-        let res = Activation::softmax_derivative(classes[0], classes);
+        let res = Activation::softmax_derivative(0, classes);
         assert!((res[0] - 0.08192506).abs() < 0.001);
     }
 }
