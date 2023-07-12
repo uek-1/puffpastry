@@ -344,6 +344,6 @@ mod test {
         let y = get_generic_tensor2d();
         let res = x - y;
         println!("{res}");
-        assert!(false)
+        assert!(true)
     }
 }

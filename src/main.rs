@@ -1,4 +1,4 @@
-use crate::{layer::Layer, model::Model};
+use crate::{layer::Dense, model::Model};
 use csv::{Reader, StringRecord};
 use rand::{self, Rng};
 use std::fmt;
@@ -12,6 +12,7 @@ mod vec_tools;
 
 use activation::Activation;
 use loss::Loss;
+use tensor::Tensor;
 
 fn main() {
     /*
@@ -103,39 +104,38 @@ impl fmt::Display for Pretty {
     }
 }
 
-/*
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
     fn xor_test() {
-        let mut model: Model<f64> = Model {
-            layers: vec![
-                Layer::from_size(2, 2, Activation::Sigmoid),
-                Layer::from_size(2, 1, Activation::None),
+        let mut model: Model<f64> = Model::from_layers(
+            vec![
+                Dense::from_size(2, 2, Activation::Sigmoid),
+                Dense::from_size(2, 1, Activation::None),
             ],
-            loss: Loss::MeanSquaredError,
-        };
+            Loss::MeanSquaredError,
+        );
 
-        let train = vec![
+        let train = Tensor::from(vec![
             vec![0.0, 0.0],
             vec![0.0, 1.0],
             vec![1.0, 0.0],
             vec![1.0, 1.0],
-        ];
+        ]);
 
-        let validate = vec![vec![0.0], vec![1.0], vec![1.0], vec![0.0]];
+        let validate = Tensor::from(vec![vec![0.0], vec![1.0], vec![1.0], vec![0.0]]);
 
-        model.fit(train, validate, 100, 1.2);
+        // model.fit(train, validate, 100, 1.2);
 
-        let res = model.evaluate(&vec![0.0, 1.0])[0];
-        println!("0 XOR 1 = {res}");
-        assert!(res > 0.8);
+        let res = model.evaluate(&Tensor::from(vec![vec![0.0], vec![1.0]]));
+        println!("0 XOR 1 =  {:?}", res.data);
+        assert!(false)
+        // assert!(res > 0.8);
 
-        let res = model.evaluate(&vec![1.0, 1.0])[0];
-        println!("1 XOR 1 = {res}");
-        assert!(res < 0.3);
+        // let res = model.evaluate(&vec![1.0, 1.0])[0];
+        // println!("1 XOR 1 = {res}");
+        // assert!(res < 0.3);
     }
 }
-*/
