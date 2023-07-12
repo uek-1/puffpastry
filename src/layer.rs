@@ -1,48 +1,52 @@
 use rand::Rng;
 
 use crate::activation::Activation;
-use crate::vec_tools::{self, MatrixMultiply, Transpose, AddVec};
 use crate::rand;
-
+use crate::tensor::Tensor;
+use crate::vec_tools::ValidNumber;
 
 #[derive(Clone, Debug)]
-pub struct Layer<T>{
-    pub weights : Vec<Vec<T>>,
-    pub biases : Vec<T>,
-    pub activation : Activation,
+pub struct Dense<T: ValidNumber<T>> {
+    pub weights: Tensor<2, T>,
+    pub biases: Tensor<2, T>,
+    pub activation: Activation,
 }
 
-impl<T : vec_tools::ValidNumber<T>> Layer<T> {
-    pub fn from_size(input_size : usize, output_size : usize, activation : Activation) -> Layer<T> {
+impl<T: ValidNumber<T>> Dense<T> {
+    pub fn from_size(input_size: usize, output_size: usize, activation: Activation) -> Dense<T> {
         let mut rng = rand::thread_rng();
-        let mut weights = vec![vec![T::from(1.0); input_size]; output_size]; 
+        let mut weights = Tensor::new([output_size, input_size]);
 
-        for row in &mut weights  {
-            for elem in row {
-                *elem = T::from(rng.gen_range(0.0..1.0));
-            }
+        for elem in &mut weights.data {
+            *elem = T::from(rng.gen_range(0.0..1.0));
         }
 
-        let biases = vec![T::from(0.0); output_size];
+        let biases = Tensor::new([input_size, 1]);
 
-        Layer {
+        Dense {
             weights,
             biases,
-            activation
-        }
-
-    }
-
-    pub fn from_weights_biases(weights : Vec<Vec<T>>, biases : Vec<T>, activation : Activation) -> Layer<T> {
-        Layer {
-            weights,
-            biases,
-            activation
+            activation,
         }
     }
 
-    pub fn evaluate(&self, input: &Vec<Vec<T>>) -> Vec<Vec<T>> {
-        let out : Vec<Vec<T>> = self.weights
+    pub fn from_weights_biases(
+        weights: Vec<Vec<T>>,
+        biases: Vec<Vec<T>>,
+        activation: Activation,
+    ) -> Dense<T> {
+        Dense {
+            weights: Tensor::<2, T>::from(weights),
+            biases: Tensor::<2, T>::from(biases),
+            activation,
+        }
+    }
+}
+
+impl<T: ValidNumber<T>> Layer<T> for Dense<T> {
+    fn evaluate<const I: usize, const O: usize>(&self, input: &Tensor<I, T>) -> Tensor<O, T> {
+        let out: Vec<Vec<T>> = self
+            .weights
             .matrix_multiply(input)
             .transposed()
             .into_iter()
@@ -53,7 +57,7 @@ impl<T : vec_tools::ValidNumber<T>> Layer<T> {
         out.transposed()
     }
 
-    pub fn preactivation(&self, input: &Vec<Vec<T>>) -> Vec<Vec<T>> {
+    fn preactivate(&self, input: &Tensor<1, T>) -> Tensor<1, T> {
         self.weights
             .matrix_multiply(input)
             .transposed()
@@ -63,7 +67,7 @@ impl<T : vec_tools::ValidNumber<T>> Layer<T> {
             .transposed()
     }
 
-    pub fn activate(&self, preactivation : Vec<Vec<T>>) -> Vec<Vec<T>> {
+    fn activate(&self, preactivation: Vec<Vec<T>>) -> Vec<Vec<T>> {
         preactivation
             .transposed()
             .into_iter()
@@ -71,4 +75,18 @@ impl<T : vec_tools::ValidNumber<T>> Layer<T> {
             .collect::<Vec<Vec<T>>>()
             .transposed()
     }
+}
+
+pub trait Layer<T: ValidNumber<T>> {
+    fn evaluate<const I: usize, const O: usize>(&self, input: &Tensor<I, T>) -> Tensor<O, T>
+    where
+        Self: Sized;
+
+    fn preactivate<const I: usize, const O: usize>(&self, input: &Tensor<I, T>) -> Tensor<O, T>
+    where
+        Self: Sized;
+
+    fn activate<const I: usize, const O: usize>(&self, input: &Tensor<I, T>) -> Tensor<O, T>
+    where
+        Self: Sized;
 }

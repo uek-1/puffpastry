@@ -17,7 +17,7 @@ impl<T: vec_tools::ValidNumber<T>> Model<T> {
         }
     }
 
-    pub fn from_layers(layers: Vec<Layer<T>>, loss: Loss) -> Model<T> {
+    pub fn from_layers(layers: Vec<Layer<T>>>, loss: Loss) -> Model<T> {
         Model { layers, loss }
     }
 

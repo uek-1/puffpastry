@@ -2,10 +2,10 @@ use crate::vec_tools::ValidNumber;
 use std::fmt::Display;
 use std::ops::{Add, Div, Mul, Sub};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tensor<const RANK: usize, T: ValidNumber<T>> {
-    shape: [usize; RANK],
-    data: Vec<T>,
+    pub shape: [usize; RANK],
+    pub data: Vec<T>,
 }
 
 impl<const RANK: usize, T: ValidNumber<T>> Tensor<RANK, T> {
