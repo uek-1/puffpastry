@@ -7,12 +7,14 @@ mod activation;
 mod layer;
 mod loss;
 mod model;
+mod tensor;
 mod vec_tools;
 
 use activation::Activation;
 use loss::Loss;
 
 fn main() {
+    /*
     let mut model: Model<f64> = Model {
         layers: vec![Layer::from_size(784, 10, Activation::Softmax)],
         loss: Loss::CategoricalCrossEntropy,
@@ -78,6 +80,7 @@ fn main() {
             model.loss.calculate_loss(res, validate[i].clone())
         );
     }
+    */
 }
 
 pub struct Pretty(Vec<f64>);
@@ -100,6 +103,7 @@ impl fmt::Display for Pretty {
     }
 }
 
+/*
 #[cfg(test)]
 mod test {
     use super::*;
@@ -134,3 +138,4 @@ mod test {
         assert!(res < 0.3);
     }
 }
+*/

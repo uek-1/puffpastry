@@ -1,4 +1,5 @@
-use crate::vec_tools::{self, Transpose};
+use crate::tensor::Tensor;
+use crate::vec_tools::{Transpose, ValidNumber};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Activation {
@@ -9,7 +10,7 @@ pub enum Activation {
 }
 
 impl Activation {
-    pub fn activate_vec<T: vec_tools::ValidNumber<T>>(&self, preactivations: Vec<T>) -> Vec<T> {
+    pub fn activate_vec<T: ValidNumber<T>>(&self, preactivations: Vec<T>) -> Vec<T> {
         preactivations
             .iter()
             .map(|num| match self {
@@ -21,10 +22,74 @@ impl Activation {
             .collect()
     }
 
-    pub fn derivative<T: vec_tools::ValidNumber<T>>(
+    pub fn activate_tensor<T: ValidNumber<T>>(
         &self,
-        preactivations: Vec<Vec<T>>,
-    ) -> Vec<Vec<T>> {
+        preactivations: &Tensor<T>,
+    ) -> Result<Tensor<T>, ()> {
+        match preactivations.rank() {
+            1 => self.activate_tensor1d(preactivations),
+            2 => self.activate_tensor2d(preactivations),
+            _ => self.activate_tensor_naive(preactivations),
+        }
+    }
+
+    pub fn activate_tensor1d<T: ValidNumber<T>>(
+        &self,
+        preactivations: &Tensor<T>,
+    ) -> Result<Tensor<T>, ()> {
+        let new_data: Vec<T> = preactivations
+            .data
+            .iter()
+            .map(|x| match self {
+                Activation::None => *x,
+                Activation::Relu => Self::relu(*x),
+                Activation::Sigmoid => Self::sigmoid(*x),
+                Activation::Softmax => Self::softmax(*x, preactivations.data.clone()),
+            })
+            .collect();
+
+        Ok(Tensor::from(new_data))
+    }
+
+    pub fn activate_tensor2d<T: ValidNumber<T>>(
+        &self,
+        preactivations: &Tensor<T>,
+    ) -> Result<Tensor<T>, ()> {
+        let new_data: Vec<Vec<T>> = preactivations
+            .as_columns()
+            .iter()
+            .map(|col| self.activate_tensor1d(&col))
+            .map(|res| match res {
+                Ok(col) => Ok(col.data),
+                Err(_) => Err(()),
+            })
+            .collect::<Result<Vec<Vec<T>>, ()>>()?;
+
+        Ok(Tensor::<T>::from(new_data))
+    }
+
+    pub fn activate_tensor_naive<T: ValidNumber<T>>(
+        &self,
+        preactivations: &Tensor<T>,
+    ) -> Result<Tensor<T>, ()> {
+        let new_data = preactivations
+            .data
+            .iter()
+            .map(|x| match self {
+                Activation::None => Ok(*x),
+                Activation::Sigmoid => Ok(Self::sigmoid(*x)),
+                Activation::Relu => Ok(Self::relu(*x)),
+                Activation::Softmax => Err(()),
+            })
+            .collect::<Result<Vec<T>, ()>>()?;
+
+        Ok(Tensor {
+            shape: preactivations.shape().to_vec(),
+            data: new_data,
+        })
+    }
+
+    pub fn derivative<T: ValidNumber<T>>(&self, preactivations: Vec<Vec<T>>) -> Vec<Vec<T>> {
         preactivations
             .transposed()
             .iter()
@@ -46,7 +111,7 @@ impl Activation {
             .unwrap()
     }
 
-    pub fn activate_num<T: vec_tools::ValidNumber<T>>(&self, num: T) -> T {
+    pub fn activate_num<T: ValidNumber<T>>(&self, num: T) -> T {
         match self {
             Activation::Sigmoid => Self::sigmoid(num),
             Activation::Relu => Self::relu(num),
@@ -55,30 +120,30 @@ impl Activation {
         }
     }
 
-    fn sigmoid<T: vec_tools::ValidNumber<T>>(num: T) -> T {
+    fn sigmoid<T: ValidNumber<T>>(num: T) -> T {
         T::from(1.0 / (1.0 + (-1.0 * num.into()).exp()))
     }
 
-    fn sigmoid_derivative<T: vec_tools::ValidNumber<T>>(num: T) -> Vec<T> {
+    fn sigmoid_derivative<T: ValidNumber<T>>(num: T) -> Vec<T> {
         let delta = Self::sigmoid(num);
         vec![delta * (T::from(1.0) - delta)]
     }
 
-    fn relu<T: vec_tools::ValidNumber<T>>(num: T) -> T {
+    fn relu<T: ValidNumber<T>>(num: T) -> T {
         if num < T::from(0.0) {
             return T::from(0.0);
         }
         num
     }
 
-    fn relu_derivative<T: vec_tools::ValidNumber<T>>(num: T) -> Vec<T> {
+    fn relu_derivative<T: ValidNumber<T>>(num: T) -> Vec<T> {
         if num < T::from(0.0) {
             return vec![T::from(0.0)];
         }
         vec![T::from(1.0)]
     }
 
-    pub fn softmax<T: vec_tools::ValidNumber<T>>(num: T, classes: Vec<T>) -> T {
+    pub fn softmax<T: ValidNumber<T>>(num: T, classes: Vec<T>) -> T {
         // To saturate to zero instead of infinity, subtract max(classes) from top and bottom.
         /*let max_classes : f64 = classes
             .iter()
@@ -98,7 +163,7 @@ impl Activation {
         out
     }
 
-    fn softmax_derivative<T: vec_tools::ValidNumber<T>>(neuron: usize, classes: Vec<T>) -> Vec<T> {
+    fn softmax_derivative<T: ValidNumber<T>>(neuron: usize, classes: Vec<T>) -> Vec<T> {
         //ERROR: Softmax has {classes.len()} outputs and input nerons which are all codependent. Here we
         //only calculate the effect an input neuron has on its respective output activation,
         //ignoring the fact that the input neuron affects all {classes.len()} outputs.

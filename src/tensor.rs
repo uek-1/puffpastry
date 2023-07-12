@@ -3,13 +3,14 @@ use std::fmt::Display;
 use std::ops::{Add, Div, Mul, Sub};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Tensor<const RANK: usize, T: ValidNumber<T>> {
-    pub shape: [usize; RANK],
+pub struct Tensor<T: ValidNumber<T>> {
+    pub shape: Vec<usize>,
     pub data: Vec<T>,
 }
 
-impl<const RANK: usize, T: ValidNumber<T>> Tensor<RANK, T> {
-    pub fn new(shape: [usize; RANK]) -> Tensor<RANK, T> {
+/// Functions for all ranks
+impl<T: ValidNumber<T>> Tensor<T> {
+    pub fn new(shape: Vec<usize>) -> Tensor<T> {
         let size = shape.iter().fold(1, |size, x| size * x);
         Tensor {
             shape: shape,
@@ -17,7 +18,19 @@ impl<const RANK: usize, T: ValidNumber<T>> Tensor<RANK, T> {
         }
     }
 
-    fn calculate_data_index(&self, loc: [usize; RANK]) -> usize {
+    pub fn rank(&self) -> usize {
+        self.shape.len()
+    }
+
+    pub fn shape(&self) -> &Vec<usize> {
+        &self.shape
+    }
+
+    pub fn iter(&self) -> core::slice::Iter<'_, T> {
+        self.data.iter()
+    }
+
+    fn calculate_data_index(&self, loc: &[usize]) -> usize {
         loc.into_iter()
             .rev()
             .enumerate()
@@ -31,17 +44,25 @@ impl<const RANK: usize, T: ValidNumber<T>> Tensor<RANK, T> {
             })
     }
 
-    pub fn get(&self, loc: [usize; RANK]) -> Option<&T> {
+    pub fn get(&self, loc: &[usize]) -> Option<&T> {
+        if loc.len() != self.rank() {
+            return None;
+        }
+
         let idx = self.calculate_data_index(loc);
         self.data.get(idx)
     }
 
-    pub fn get_mut(&mut self, loc: [usize; RANK]) -> Option<&mut T> {
+    pub fn get_mut(&mut self, loc: &[usize]) -> Option<&mut T> {
+        if loc.len() != self.rank() {
+            return None;
+        }
+
         let idx = self.calculate_data_index(loc);
         self.data.get_mut(idx)
     }
 
-    pub fn elementwise_product(&self, other: &Tensor<RANK, T>) -> Result<Tensor<RANK, T>, ()> {
+    pub fn elementwise_product(&self, other: &Tensor<T>) -> Result<Tensor<T>, ()> {
         if self.shape != other.shape {
             return Err(());
         }
@@ -58,10 +79,10 @@ impl<const RANK: usize, T: ValidNumber<T>> Tensor<RANK, T> {
     }
 }
 
-impl<const RANK: usize, T: ValidNumber<T>> Add<Tensor<RANK, T>> for Tensor<RANK, T> {
-    type Output = Tensor<RANK, T>;
+impl<T: ValidNumber<T>> Add<Tensor<T>> for Tensor<T> {
+    type Output = Tensor<T>;
 
-    fn add(self, rhs: Tensor<RANK, T>) -> Self::Output {
+    fn add(self, rhs: Tensor<T>) -> Self::Output {
         if self.shape != rhs.shape {
             panic!("Cannot add tensors of different shape!")
         }
@@ -78,10 +99,10 @@ impl<const RANK: usize, T: ValidNumber<T>> Add<Tensor<RANK, T>> for Tensor<RANK,
     }
 }
 
-impl<const RANK: usize, T: ValidNumber<T>> Sub<Tensor<RANK, T>> for Tensor<RANK, T> {
-    type Output = Tensor<RANK, T>;
+impl<T: ValidNumber<T>> Sub<Tensor<T>> for Tensor<T> {
+    type Output = Tensor<T>;
 
-    fn sub(self, rhs: Tensor<RANK, T>) -> Self::Output {
+    fn sub(self, rhs: Tensor<T>) -> Self::Output {
         if self.shape != rhs.shape {
             panic!("Cannot add tensors of different shape")
         }
@@ -98,8 +119,8 @@ impl<const RANK: usize, T: ValidNumber<T>> Sub<Tensor<RANK, T>> for Tensor<RANK,
     }
 }
 
-impl<const RANK: usize, T: ValidNumber<T>> Mul<T> for Tensor<RANK, T> {
-    type Output = Tensor<RANK, T>;
+impl<T: ValidNumber<T>> Mul<T> for Tensor<T> {
+    type Output = Tensor<T>;
 
     fn mul(self, rhs: T) -> Self::Output {
         Tensor {
@@ -109,8 +130,8 @@ impl<const RANK: usize, T: ValidNumber<T>> Mul<T> for Tensor<RANK, T> {
     }
 }
 
-impl<const RANK: usize, T: ValidNumber<T>> Div<T> for Tensor<RANK, T> {
-    type Output = Tensor<RANK, T>;
+impl<T: ValidNumber<T>> Div<T> for Tensor<T> {
+    type Output = Tensor<T>;
 
     fn div(self, rhs: T) -> Self::Output {
         if rhs == T::from(0.0) {
@@ -124,43 +145,43 @@ impl<const RANK: usize, T: ValidNumber<T>> Div<T> for Tensor<RANK, T> {
     }
 }
 
-impl<T: ValidNumber<T>> Tensor<1, T> {
-    pub fn from(v: Vec<T>) -> Tensor<1, T> {
+impl<T: ValidNumber<T>> From<Vec<T>> for Tensor<T> {
+    fn from(value: Vec<T>) -> Self {
         Tensor {
-            shape: [v.len()],
-            data: v,
+            shape: vec![value.len()],
+            data: value,
         }
     }
-
-    pub fn iter(&self) -> core::slice::Iter<'_, T> {
-        self.data.iter()
-    }
-    pub fn dot_product(&self, other: &Tensor<1, T>) -> T {
-        self.iter()
-            .zip(other.iter())
-            .fold(T::from(0.0), |res, (s, o)| res + *s * *o)
-    }
 }
 
-impl<T: ValidNumber<T>> IntoIterator for Tensor<1, T> {
-    type Item = T;
-    type IntoIter = std::vec::IntoIter<T>;
-    fn into_iter(self) -> Self::IntoIter {
-        self.data.into_iter()
-    }
-}
-
-impl<T: ValidNumber<T>> Tensor<2, T> {
-    pub fn from(v: Vec<Vec<T>>) -> Tensor<2, T> {
-        let shape = [v.len(), v[0].len()];
-        let data: Vec<T> = v.into_iter().fold(vec![], |mut data, mut x| {
+impl<T: ValidNumber<T>> From<Vec<Vec<T>>> for Tensor<T> {
+    fn from(value: Vec<Vec<T>>) -> Self {
+        let shape = vec![value.len(), value[0].len()];
+        let data: Vec<T> = value.into_iter().fold(vec![], |mut data, mut x| {
             data.append(&mut x);
             data
         });
 
         Tensor { shape, data }
     }
+}
 
+// Functions for rank 1
+
+impl<T: ValidNumber<T>> Tensor<T> {
+    pub fn dot_product(&self, other: &Tensor<T>) -> Result<T, ()> {
+        if self.rank() != 1 || (self.shape() != other.shape()) {
+            return Err(());
+        }
+
+        Ok(self
+            .iter()
+            .zip(other.iter())
+            .fold(T::from(0.0), |res, (s, o)| res + *s * *o))
+    }
+}
+
+impl<T: ValidNumber<T>> Tensor<T> {
     pub fn row_count(&self) -> usize {
         self.shape[0]
     }
@@ -169,21 +190,24 @@ impl<T: ValidNumber<T>> Tensor<2, T> {
         self.shape[1]
     }
 
-    pub fn get_dims(&self) -> (usize, usize) {
+    pub fn get_2dims(&self) -> (usize, usize) {
+        if self.rank() != 2 {
+            panic!("only defined for rank 2 tensors!")
+        }
         (self.shape[0], self.shape[1])
     }
 
-    pub fn as_rows(&self) -> Vec<Tensor<1, T>> {
-        let (_, cols) = self.get_dims();
+    pub fn as_rows(&self) -> Vec<Tensor<T>> {
+        let (_, cols) = self.get_2dims();
 
         self.data
             .chunks_exact(cols)
-            .map(|x| Tensor::<1, T>::from(x.to_vec()))
+            .map(|x| Tensor::from(x.to_vec()))
             .collect()
     }
 
-    pub fn as_columns(&self) -> Vec<Tensor<1, T>> {
-        let (rows, cols) = self.get_dims();
+    pub fn as_columns(&self) -> Vec<Tensor<T>> {
+        let (rows, cols) = self.get_2dims();
 
         (0..cols)
             .map(|x| {
@@ -195,16 +219,16 @@ impl<T: ValidNumber<T>> Tensor<2, T> {
                     .cloned()
                     .collect()
             })
-            .map(|x| Tensor::<1, T>::from(x))
+            .map(|x: Vec<T>| Tensor::from(x))
             .collect()
     }
 
-    pub fn matrix_multiply(&self, other: &Tensor<2, T>) -> Result<Tensor<2, T>, ()> {
+    pub fn matrix_multiply(&self, other: &Tensor<T>) -> Result<Tensor<T>, ()> {
         if self.shape[1] != other.shape[0] {
             return Err(());
         }
 
-        let new_data = self
+        let new_data: Vec<Vec<T>> = self
             .as_rows()
             .iter()
             .map(|row| {
@@ -212,21 +236,21 @@ impl<T: ValidNumber<T>> Tensor<2, T> {
                     .as_columns()
                     .iter()
                     .map(|col| row.dot_product(col))
-                    .collect()
+                    .collect::<Result<Vec<T>, ()>>()
             })
-            .collect();
+            .collect::<Result<Vec<Vec<T>>, ()>>()?;
 
-        Ok(Tensor::<2, T>::from(new_data))
+        Ok(Tensor::from(new_data))
     }
 }
 
-impl<T: ValidNumber<T>> Display for Tensor<2, T> {
+impl<T: ValidNumber<T>> Display for Tensor<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let (rows, cols) = self.get_dims();
+        let (rows, cols) = self.get_2dims();
 
         for row in 0..rows {
             for col in 0..cols {
-                write!(f, "{:?} ", self.get([row, col]).unwrap())?;
+                write!(f, "{:?} ", self.get(&[row, col]).unwrap())?;
             }
             writeln!(f)?;
         }
@@ -239,8 +263,8 @@ impl<T: ValidNumber<T>> Display for Tensor<2, T> {
 mod test {
     use super::*;
 
-    fn get_generic_tensor2d() -> Tensor<2, f64> {
-        Tensor::<2, f64>::from(vec![
+    fn get_generic_tensor2d() -> Tensor<f64> {
+        Tensor::<f64>::from(vec![
             vec![1.0, 2.0, 3.0],
             vec![4.0, 5.0, 6.0],
             vec![7.0, 8.0, 9.0],
@@ -249,34 +273,34 @@ mod test {
 
     #[test]
     fn dot_product_test() {
-        let x = Tensor::<1, f64>::from(vec![1.0, 2.0, 3.0]);
-        let y = Tensor::<1, f64>::from(vec![1.0, 2.0, 3.0]);
+        let x = Tensor::<f64>::from(vec![1.0, 2.0, 3.0]);
+        let y = Tensor::<f64>::from(vec![1.0, 2.0, 3.0]);
 
         let z = x.dot_product(&y);
 
-        assert_eq!(z, 14.0)
+        assert_eq!(z.unwrap(), 14.0)
     }
 
     #[test]
     fn elementwise2d_test() {
-        let x = Tensor::<2, f64>::from(vec![vec![1.0, 2.0, 3.0], vec![4.0, 5.0, 6.0]]);
+        let x = Tensor::<f64>::from(vec![vec![1.0, 2.0, 3.0], vec![4.0, 5.0, 6.0]]);
 
-        let y = Tensor::<2, f64>::from(vec![vec![1.0, 1.0, 1.0], vec![0.0, 1.0, 1.0]]);
+        let y = Tensor::<f64>::from(vec![vec![1.0, 1.0, 1.0], vec![0.0, 1.0, 1.0]]);
 
         let res = x
             .elementwise_product(&y)
             .expect("Incorrect Dimension Error");
 
         assert_eq!(
-            Tensor::<2, f64>::from(vec![vec![1.0, 2.0, 3.0], vec![0.0, 5.0, 6.0]]),
+            Tensor::<f64>::from(vec![vec![1.0, 2.0, 3.0], vec![0.0, 5.0, 6.0]]),
             res
         )
     }
 
     #[test]
     fn incorrect_elementwise2d_test() {
-        let x = Tensor::<2, f64>::from(vec![vec![2.0, 3.0]]);
-        let y = Tensor::<2, f64>::from(vec![vec![1.0, 2.0, 3.0]]);
+        let x = Tensor::<f64>::from(vec![vec![2.0, 3.0]]);
+        let y = Tensor::<f64>::from(vec![vec![1.0, 2.0, 3.0]]);
 
         let res = x.elementwise_product(&y);
 
@@ -285,15 +309,15 @@ mod test {
 
     #[test]
     fn as_rows_test() {
-        let x = Tensor::<2, f64>::from(vec![
+        let x = Tensor::<f64>::from(vec![
             vec![1.0, 2.0, 3.0],
             vec![4.0, 5.0, 6.0],
             vec![7.0, 8.0, 9.0],
         ]);
 
-        assert_eq!(x.as_rows()[0], Tensor::<1, f64>::from(vec![1.0, 2.0, 3.0]));
-        assert_eq!(x.as_rows()[1], Tensor::<1, f64>::from(vec![4.0, 5.0, 6.0]));
-        assert_eq!(x.as_rows()[2], Tensor::<1, f64>::from(vec![7.0, 8.0, 9.0]))
+        assert_eq!(x.as_rows()[0], Tensor::<f64>::from(vec![1.0, 2.0, 3.0]));
+        assert_eq!(x.as_rows()[1], Tensor::<f64>::from(vec![4.0, 5.0, 6.0]));
+        assert_eq!(x.as_rows()[2], Tensor::<f64>::from(vec![7.0, 8.0, 9.0]))
     }
 
     #[test]
@@ -305,7 +329,7 @@ mod test {
         println!("{res}");
 
         assert_eq!(
-            Tensor::<2, f64>::from(vec![
+            Tensor::<f64>::from(vec![
                 vec![30.0, 36.0, 42.0],
                 vec![66.0, 81.0, 96.0],
                 vec![102.0, 126.0, 150.0]
