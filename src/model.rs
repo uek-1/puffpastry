@@ -6,6 +6,7 @@ use crate::vec_tools::{
     self, AddVec, ElementwiseMatrixMultiply, MatrixMultiply, Transpose, ValidNumber,
 };
 
+#[derive(Debug)]
 pub struct Model<T: ValidNumber<T>> {
     pub layers: Vec<Box<dyn Layer<T>>>,
     pub loss: Loss,
@@ -19,11 +20,12 @@ impl<T: ValidNumber<T>> Model<T> {
         }
     }
 
-    pub fn from_layers(layers: Vec<impl Layer<T>>, loss: Loss) -> Model<T> {
+    pub fn from_layers(layers: Vec<impl Layer<T> + 'static>, loss: Loss) -> Model<T> {
         let mut new: Vec<Box<dyn Layer<T>>> = vec![];
 
         for layer in layers {
             let item: Box<dyn Layer<T>> = Box::new(layer);
+            new.push(item);
         }
 
         Model { layers: new, loss }
@@ -252,9 +254,9 @@ impl<T: ValidNumber<T>> Model<T> {
     //         }
     //     }
 
-    pub fn evaluate(&self, input: &Tensor<T>) -> Tensor<T> {
+    pub fn evaluate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()> {
         self.layers
             .iter()
-            .fold(input.clone(), |temp, layer| layer.evaluate(&temp).unwrap())
+            .fold(Ok(input.clone()), |temp, layer| layer.evaluate(&temp?))
     }
 }

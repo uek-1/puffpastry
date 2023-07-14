@@ -68,9 +68,6 @@ impl<T: ValidNumber<T>> Tensor<T> {
         }
 
         let mut out = Tensor::new(self.shape.clone());
-        println!("{:?}, {:?}", self.shape, out.shape);
-        println!("{:?}", self.data);
-        println!("{}", out.data.len());
         for i in 0..self.data.len() {
             out.data[i] = self.data[i] * other.data[i];
         }
@@ -84,7 +81,7 @@ impl<T: ValidNumber<T>> Add<Tensor<T>> for Tensor<T> {
 
     fn add(self, rhs: Tensor<T>) -> Self::Output {
         if self.shape != rhs.shape {
-            panic!("Cannot add tensors of different shape!")
+            panic!("Cannot add tensors of different shape: lhs {self:?},  rhs: {rhs:?}")
         }
 
         Tensor {
@@ -104,7 +101,7 @@ impl<T: ValidNumber<T>> Sub<Tensor<T>> for Tensor<T> {
 
     fn sub(self, rhs: Tensor<T>) -> Self::Output {
         if self.shape != rhs.shape {
-            panic!("Cannot add tensors of different shape")
+            panic!("Cannot subtract tensors of different shape: lhs {self:?},  rhs: {rhs:?}")
         }
 
         Tensor {

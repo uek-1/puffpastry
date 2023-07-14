@@ -1,4 +1,5 @@
 use rand::Rng;
+use std::fmt::Debug;
 
 use crate::activation::Activation;
 use crate::rand;
@@ -21,7 +22,7 @@ impl<T: ValidNumber<T>> Dense<T> {
             *elem = T::from(rng.gen_range(0.0..1.0));
         }
 
-        let biases = Tensor::new(vec![input_size, 1]);
+        let biases = Tensor::new(vec![output_size, 1]);
 
         Dense {
             weights,
@@ -45,8 +46,11 @@ impl<T: ValidNumber<T>> Dense<T> {
 
 impl<T: ValidNumber<T>> Layer<T> for Dense<T> {
     fn evaluate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()> {
-        let preactivation = self.weights.matrix_multiply(input)? + self.biases.clone();
-        self.activate(&preactivation)
+        let preactivation = self.preactivate(input);
+        println!("preactivation {preactivation:?}");
+        let activation = self.activate(&preactivation?);
+        println!(" activatoin {activation:?}");
+        activation
     }
 
     fn preactivate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()> {
@@ -58,7 +62,7 @@ impl<T: ValidNumber<T>> Layer<T> for Dense<T> {
     }
 }
 
-pub trait Layer<T: ValidNumber<T>> {
+pub trait Layer<T: ValidNumber<T>>: Debug {
     fn evaluate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()>;
 
     fn preactivate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()>;

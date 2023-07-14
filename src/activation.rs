@@ -56,7 +56,7 @@ impl Activation {
         preactivations: &Tensor<T>,
     ) -> Result<Tensor<T>, ()> {
         let new_data: Vec<Vec<T>> = preactivations
-            .as_columns()
+            .as_rows()
             .iter()
             .map(|col| self.activate_tensor1d(&col))
             .map(|res| match res {

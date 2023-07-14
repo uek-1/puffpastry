@@ -110,6 +110,7 @@ mod test {
 
     #[test]
     fn xor_test() {
+        // std::env::set_var("RUST_BACKTRACE", "1");
         let mut model: Model<f64> = Model::from_layers(
             vec![
                 Dense::from_size(2, 2, Activation::Sigmoid),
@@ -117,6 +118,7 @@ mod test {
             ],
             Loss::MeanSquaredError,
         );
+        println!("Model: {model:?}");
 
         let train = Tensor::from(vec![
             vec![0.0, 0.0],
@@ -129,7 +131,9 @@ mod test {
 
         // model.fit(train, validate, 100, 1.2);
 
-        let res = model.evaluate(&Tensor::from(vec![vec![0.0], vec![1.0]]));
+        let res = model
+            .evaluate(&Tensor::from(vec![vec![0.0], vec![1.0]]))
+            .unwrap();
         println!("0 XOR 1 =  {:?}", res.data);
         assert!(false)
         // assert!(res > 0.8);
