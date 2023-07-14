@@ -120,26 +120,35 @@ mod test {
         );
         println!("Model: {model:?}");
 
-        let train = Tensor::from(vec![
-            vec![0.0, 0.0],
-            vec![0.0, 1.0],
-            vec![1.0, 0.0],
-            vec![1.0, 1.0],
-        ]);
+        let train = vec![
+            Tensor::from(vec![vec![0.0], vec![0.0]]),
+            Tensor::from(vec![vec![1.0], vec![0.0]]),
+            Tensor::from(vec![vec![0.0], vec![1.0]]),
+            Tensor::from(vec![vec![1.0], vec![1.0]]),
+        ];
 
-        let validate = Tensor::from(vec![vec![0.0], vec![1.0], vec![1.0], vec![0.0]]);
+        let validate = vec![
+            Tensor::from(vec![vec![0.0]]),
+            Tensor::from(vec![vec![1.0]]),
+            Tensor::from(vec![vec![1.0]]),
+            Tensor::from(vec![vec![0.0]]),
+        ];
 
-        // model.fit(train, validate, 100, 1.2);
+        model.fit(train, validate, 100, 1.2).unwrap();
 
         let res = model
             .evaluate(&Tensor::from(vec![vec![0.0], vec![1.0]]))
             .unwrap();
-        println!("0 XOR 1 =  {:?}", res.data);
-        assert!(false)
+
+        println!("0 XOR 1 =  {:?}", res);
         // assert!(res > 0.8);
 
-        // let res = model.evaluate(&vec![1.0, 1.0])[0];
-        // println!("1 XOR 1 = {res}");
+        let res = model
+            .evaluate(&Tensor::from(vec![vec![1.0], vec![1.0]]))
+            .unwrap();
+
+        println!("1 XOR 1 = {res}");
         // assert!(res < 0.3);
+        assert!(false);
     }
 }

@@ -239,6 +239,13 @@ impl<T: ValidNumber<T>> Tensor<T> {
 
         Ok(Tensor::from(new_data))
     }
+
+    pub fn transposed(&self) -> Tensor<T> {
+        Tensor {
+            shape: vec![self.shape[1], self.shape[0]],
+            data: self.data.clone(),
+        }
+    }
 }
 
 impl<T: ValidNumber<T>> Display for Tensor<T> {

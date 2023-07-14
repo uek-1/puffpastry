@@ -47,10 +47,7 @@ impl<T: ValidNumber<T>> Dense<T> {
 impl<T: ValidNumber<T>> Layer<T> for Dense<T> {
     fn evaluate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()> {
         let preactivation = self.preactivate(input);
-        println!("preactivation {preactivation:?}");
-        let activation = self.activate(&preactivation?);
-        println!(" activatoin {activation:?}");
-        activation
+        self.activate(&preactivation?)
     }
 
     fn preactivate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()> {
@@ -60,6 +57,23 @@ impl<T: ValidNumber<T>> Layer<T> for Dense<T> {
     fn activate(&self, preactivation: &Tensor<T>) -> Result<Tensor<T>, ()> {
         self.activation.activate_tensor2d(preactivation)
     }
+
+    fn get_weights(&self) -> Tensor<T> {
+        self.weights.clone()
+    }
+
+    fn set_weights(&mut self, new_weights: Tensor<T>) {
+        if self.weights.shape != new_weights.shape {
+            panic!(
+                "Incorrect shape to update weights! Current: {:?} Input {:?}",
+                self.weights.shape, new_weights.shape
+            );
+        }
+    }
+
+    fn get_activation(&self) -> Activation {
+        self.activation.clone()
+    }
 }
 
 pub trait Layer<T: ValidNumber<T>>: Debug {
@@ -68,4 +82,10 @@ pub trait Layer<T: ValidNumber<T>>: Debug {
     fn preactivate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()>;
 
     fn activate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()>;
+
+    fn get_weights(&self) -> Tensor<T>;
+
+    fn set_weights(&mut self, new_weights: Tensor<T>);
+
+    fn get_activation(&self) -> Activation;
 }
