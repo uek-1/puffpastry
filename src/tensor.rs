@@ -30,16 +30,17 @@ impl<T: ValidNumber<T>> Tensor<T> {
         self.data.iter()
     }
 
+    // TODO: FIX THIS METHOD!
     fn calculate_data_index(&self, loc: &[usize]) -> usize {
         loc.into_iter()
             .rev()
             .enumerate()
-            .fold(0, |data_idx, (dim_idx, idx)| {
+            .fold(0, |data_idx, (loc_idx, loc_val)| {
                 data_idx
-                    + idx
-                        * match dim_idx {
+                    + loc_val
+                        * match loc_idx {
                             0 => 1,
-                            _ => self.shape[dim_idx],
+                            _ => self.shape[loc_idx],
                         }
             })
     }
@@ -158,6 +159,23 @@ impl<T: ValidNumber<T>> From<Vec<Vec<T>>> for Tensor<T> {
             data.append(&mut x);
             data
         });
+
+        Tensor { shape, data }
+    }
+}
+
+impl<T: ValidNumber<T>> From<Vec<Vec<Vec<T>>>> for Tensor<T> {
+    fn from(value: Vec<Vec<Vec<T>>>) -> Self {
+        let shape = vec![value.len(), value[0].len(), value[0][1].len()];
+        let mut data: Vec<T> = vec![];
+
+        for layer in value {
+            for row in layer {
+                for item in row {
+                    data.push(item)
+                }
+            }
+        }
 
         Tensor { shape, data }
     }

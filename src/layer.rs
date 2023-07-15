@@ -6,6 +6,20 @@ use crate::rand;
 use crate::tensor::Tensor;
 use crate::vec_tools::ValidNumber;
 
+pub trait Layer<T: ValidNumber<T>>: Debug {
+    fn evaluate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()>;
+
+    fn preactivate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()>;
+
+    fn activate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()>;
+
+    fn get_weights(&self) -> Tensor<T>;
+
+    fn set_weights(&mut self, new_weights: Tensor<T>);
+
+    fn get_activation(&self) -> Activation;
+}
+
 #[derive(Clone, Debug)]
 pub struct Dense<T: ValidNumber<T>> {
     pub weights: Tensor<T>,
@@ -77,16 +91,116 @@ impl<T: ValidNumber<T>> Layer<T> for Dense<T> {
     }
 }
 
-pub trait Layer<T: ValidNumber<T>>: Debug {
-    fn evaluate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()>;
+#[derive(Clone, Debug)]
+pub struct Conv2d<T: ValidNumber<T>> {
+    weights: Tensor<T>,
+    activation: Activation,
+}
 
-    fn preactivate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()>;
+impl<T: ValidNumber<T>> Conv2d<T> {
+    pub fn from_size(
+        input_depth: usize,
+        filter_size: usize,
+        filter_count: usize,
+        stride: (usize, usize),
+        activation: Activation,
+    ) -> Self {
+        let weights = Tensor::new(vec![filter_count, input_depth, filter_size, filter_size]);
+        Conv2d {
+            weights,
+            activation,
+        }
+    }
 
-    fn activate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()>;
+    // export .depth, .cols, .rows into sep function
+    fn convolve2d(&self, input: Tensor<T>, loc: Vec<usize>, filter_num: usize) -> Result<T, ()> {
+        if input.rank() != 3 || self.get_weights().shape()[1] != input.shape()[0] || loc.len() != 3
+        {
+            return Err(());
+        }
 
-    fn get_weights(&self) -> Tensor<T>;
+        let depth = self.get_weights().shape()[1];
+        let height = self.get_weights().shape()[2];
+        let width = self.get_weights().shape()[3];
 
-    fn set_weights(&mut self, new_weights: Tensor<T>);
+        let filter_loc = vec![filter_num];
 
-    fn get_activation(&self) -> Activation;
+        let mut out = T::from(0.0);
+        for i in 0..depth {
+            for j in 0..height {
+                for k in 0..width {
+                    let input_loc = vec![loc[0] + i, loc[1] + j, loc[2] + k];
+                    let filter_loc: Vec<usize> = filter_loc
+                        .iter()
+                        .chain(input_loc.clone().iter())
+                        .cloned()
+                        .collect();
+
+                    println!("multiplying filter {filter_loc:?} with input {input_loc:?}");
+                    let filter_item = *self.weights.get(&filter_loc).ok_or(())?;
+                    let input_item = *input.get(&input_loc).ok_or(())?;
+                    println!("filter {filter_item:?} * input {input_item:?}");
+                    out = out + (filter_item * input_item);
+                }
+            }
+        }
+
+        Ok(out)
+    }
+}
+
+impl<T: ValidNumber<T>> Layer<T> for Conv2d<T> {
+    fn evaluate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()> {
+        todo!("not yet implemented")
+    }
+
+    fn preactivate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()> {
+        todo!("not yet implemented")
+    }
+
+    fn activate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()> {
+        todo!("not yet implemented")
+    }
+
+    fn get_weights(&self) -> Tensor<T> {
+        self.weights.clone()
+    }
+
+    fn set_weights(&mut self, new_weights: Tensor<T>) {
+        self.weights = new_weights;
+    }
+
+    fn get_activation(&self) -> Activation {
+        self.activation.clone()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn convolve_single_test() {
+        let weights = Tensor {
+            shape: vec![1, 2, 2, 2],
+            data: vec![1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0],
+        };
+
+        let conv2d: Conv2d<f64> = Conv2d {
+            weights,
+            activation: Activation::None,
+        };
+
+        let input = Tensor::from(vec![
+            vec![vec![1.0, 1.0], vec![1.0, 1.0]],
+            vec![vec![0.0, 0.0], vec![0.0, 0.0]],
+        ]);
+
+        println!("{input:?}");
+        assert_eq!(Some(&0.0), input.get(&[1, 0, 0]));
+
+        let res = conv2d.convolve2d(input, vec![0, 0, 0], 0).unwrap();
+
+        assert_eq!(res, 10.0);
+    }
 }
