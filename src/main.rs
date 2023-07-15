@@ -15,15 +15,14 @@ use loss::Loss;
 use tensor::Tensor;
 
 fn main() {
-    /*
-    let mut model: Model<f64> = Model {
-        layers: vec![Layer::from_size(784, 10, Activation::Softmax)],
-        loss: Loss::CategoricalCrossEntropy,
-    };
+    let mut model: Model<f64> = Model::from_layers(
+        vec![Dense::from_size(784, 10, Activation::Softmax)],
+        Loss::CategoricalCrossEntropy,
+    );
 
-    let mut train: Vec<Vec<f64>> = vec![];
+    let mut train: Vec<Tensor<f64>> = vec![];
 
-    let mut validate: Vec<Vec<f64>> = vec![];
+    let mut validate: Vec<Tensor<f64>> = vec![];
 
     let mut mnist_reader = Reader::from_path("data/mnist_train.csv").unwrap();
 
@@ -45,43 +44,40 @@ fn main() {
             let mut val_vec = vec![0.0; labels];
             val_vec[label] = 1.0;
 
-            validate.push(val_vec);
+            validate.push(Tensor::column(val_vec));
 
-            train.push(
+            train.push(Tensor::column(
                 x.into_iter()
                     .skip(1)
                     .map(|x| x.parse::<f64>().unwrap() / 255.0)
                     .collect(),
-            );
+            ));
         }
     }
 
-    println!(
-        "{:?} \n {}",
-        validate[0].to_vec(),
-        Pretty(train[0].to_vec())
-    );
+    println!("{} \n {}", validate[0], Pretty(train[0].data.clone()));
 
-    model.fit(train.clone(), validate.clone(), 5, 0.002);
+    model
+        .fit(train.clone(), validate.clone(), 5, 0.002)
+        .expect("failed to train");
 
     println!("trained model : \n");
     //println!("{:?}", model);
 
     for i in 0..10 {
         println!(
-            "testing on input {:?} : \n {}",
+            "testing on input {} : \n {}",
             validate[i].clone(),
-            Pretty(train[i].clone())
+            Pretty(train[i].data.clone())
         );
 
-        let res = model.evaluate(&train[i]);
+        let res = model.evaluate(&train[i]).unwrap();
         println!("{:?}", res);
         println!(
             "Calculated loss for this input {:?}",
             model.loss.calculate_loss(res, validate[i].clone())
         );
     }
-    */
 }
 
 pub struct Pretty(Vec<f64>);
@@ -121,33 +117,45 @@ mod test {
         println!("Model: {model:?}");
 
         let train = vec![
-            Tensor::from(vec![vec![0.0], vec![0.0]]),
-            Tensor::from(vec![vec![1.0], vec![0.0]]),
-            Tensor::from(vec![vec![0.0], vec![1.0]]),
-            Tensor::from(vec![vec![1.0], vec![1.0]]),
+            Tensor::column(vec![0.0, 0.0]),
+            Tensor::column(vec![1.0, 0.0]),
+            Tensor::column(vec![0.0, 1.0]),
+            Tensor::column(vec![1.0, 1.0]),
         ];
 
         let validate = vec![
-            Tensor::from(vec![vec![0.0]]),
-            Tensor::from(vec![vec![1.0]]),
-            Tensor::from(vec![vec![1.0]]),
-            Tensor::from(vec![vec![0.0]]),
+            Tensor::column(vec![0.0]),
+            Tensor::column(vec![1.0]),
+            Tensor::column(vec![1.0]),
+            Tensor::column(vec![0.0]),
         ];
 
         model.fit(train, validate, 100, 1.2).unwrap();
 
-        let res = model
-            .evaluate(&Tensor::from(vec![vec![0.0], vec![1.0]]))
-            .unwrap();
+        let res = model.evaluate(&Tensor::column(vec![0.0, 1.0])).unwrap();
 
         println!("0 XOR 1 =  {:?}", res);
         assert!(res.data[0] > 0.8);
 
-        let res = model
-            .evaluate(&Tensor::from(vec![vec![1.0], vec![1.0]]))
-            .unwrap();
+        let res = model.evaluate(&Tensor::column(vec![1.0, 1.0])).unwrap();
 
         println!("1 XOR 1 = {res}");
         assert!(res.data[0] < 0.3);
+    }
+
+    #[test]
+    fn softmax_output_test() {
+        let model: Model<f64> = Model::from_layers(
+            vec![Dense::from_size(5, 5, Activation::Softmax)],
+            Loss::MeanSquaredError,
+        );
+
+        let res = model
+            .evaluate(&Tensor::column(vec![1.0, 2.0, 3.0, 4.0, 5.0]))
+            .unwrap();
+
+        let sum = res.iter().fold(0.0, |sum, x| sum + x);
+
+        assert!(sum <= 1.0)
     }
 }

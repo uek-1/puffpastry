@@ -246,6 +246,12 @@ impl<T: ValidNumber<T>> Tensor<T> {
             data: self.data.clone(),
         }
     }
+
+    pub fn column(data: Vec<T>) -> Tensor<T> {
+        let data: Vec<Vec<T>> = data.into_iter().map(|x| vec![x]).collect();
+
+        Tensor::from(data)
+    }
 }
 
 impl<T: ValidNumber<T>> Display for Tensor<T> {

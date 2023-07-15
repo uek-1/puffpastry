@@ -37,17 +37,11 @@ impl Activation {
         &self,
         preactivations: &Tensor<T>,
     ) -> Result<Tensor<T>, ()> {
-        let new_data: Vec<T> = preactivations
-            .data
-            .iter()
-            .map(|x| match self {
-                Activation::None => *x,
-                Activation::Relu => Self::relu(*x),
-                Activation::Sigmoid => Self::sigmoid(*x),
-                Activation::Softmax => Self::softmax(*x, preactivations.data.clone()),
-            })
-            .collect();
+        if preactivations.rank() != 1 {
+            return Err(());
+        }
 
+        let new_data: Vec<T> = self.activate_vec(preactivations.data.clone());
         Ok(Tensor::from(new_data))
     }
 
@@ -55,8 +49,12 @@ impl Activation {
         &self,
         preactivations: &Tensor<T>,
     ) -> Result<Tensor<T>, ()> {
+        if preactivations.rank() != 2 || preactivations.shape()[1] != 1 {
+            return Err(());
+        }
+
         let new_data: Vec<Vec<T>> = preactivations
-            .as_rows()
+            .as_columns()
             .iter()
             .map(|col| self.activate_tensor1d(&col))
             .map(|res| match res {
@@ -65,7 +63,7 @@ impl Activation {
             })
             .collect::<Result<Vec<Vec<T>>, ()>>()?;
 
-        Ok(Tensor::<T>::from(new_data))
+        Ok(Tensor::<T>::from(new_data).transposed())
     }
 
     pub fn activate_tensor_naive<T: ValidNumber<T>>(
