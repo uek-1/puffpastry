@@ -92,7 +92,7 @@ impl Activation {
     //TODO : check for errors here!
     pub fn derivative<T: ValidNumber<T>>(&self, preactivations: &Tensor<T>) -> Tensor<T> {
         let data = preactivations
-            .as_rows()
+            .as_columns()
             .iter()
             .map(|x| {
                 x.data
@@ -107,12 +107,9 @@ impl Activation {
                     .collect::<Vec<Vec<T>>>()
                     .clone()
             })
-            .collect::<Vec<Vec<Vec<T>>>>()
-            .get(0)
-            .cloned()
-            .unwrap();
+            .collect::<Vec<Vec<Vec<T>>>>();
 
-        Tensor::from(data)
+        Tensor::from(data[0].clone())
     }
 
     pub fn activate_num<T: ValidNumber<T>>(&self, num: T) -> T {

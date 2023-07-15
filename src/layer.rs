@@ -69,6 +69,7 @@ impl<T: ValidNumber<T>> Layer<T> for Dense<T> {
                 self.weights.shape, new_weights.shape
             );
         }
+        self.weights = new_weights;
     }
 
     fn get_activation(&self) -> Activation {

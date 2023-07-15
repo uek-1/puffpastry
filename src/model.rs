@@ -63,6 +63,8 @@ impl<T: ValidNumber<T>> Model<T> {
         let mut prev_layer: Option<&Box<dyn Layer<T>>> = None;
         let mut step_gradient = loss_gradient;
 
+        // println!("{a_steps:?}");
+
         for (num, layer) in self.layers.iter().rev().enumerate() {
             // println!("{num}");
             let current_preactivation = z_steps
@@ -71,26 +73,34 @@ impl<T: ValidNumber<T>> Model<T> {
             let previous_activation = a_steps
                 .pop()
                 .expect("Backprop couldn't find required activations!");
-            //println!("backprop using z: {:?}, a: {:?}", current_z, previous_a);
+            // println!(
+            //     "backprop using z: {:?}, a: {:?}",
+            //     current_preactivation, previous_activation
+            // );
 
             // Column vector
-            //println!("CALCULATING dz/da");
+            // println!("CALCULATING dz/da");
+            // println!("prev {prev_layer:?}, sg : {step_gradient:?}");
             let partial_prevpreactiv_activation = match prev_layer {
-                Some(prev) => prev.get_weights().matrix_multiply(&step_gradient)?,
+                Some(prev) => prev
+                    .get_weights()
+                    .transposed()
+                    .matrix_multiply(&step_gradient)?,
                 None => step_gradient,
             };
 
-            //println!("{:?}", dz_da);
+            // println!("{:?}", partial_prevpreactiv_activation);
 
             // Column vector
-            //println!("CALCULATING da/dz");
+            // println!("CALCULATING da/dz");
+            // println!("derivative of {current_preactivation:?}");
             let partial_activation_preactiv: Tensor<T> =
                 layer.get_activation().derivative(&current_preactivation);
-            //println!("{:?}", da_dz);
+            // println!("{:?}", partial_activation_preactiv);
 
             // Elementwise multiply - Hadamard product, unless it's the last layer (first
             // iteration). Then pick between matmul / elementwise depending on sizes.
-            //println!("CALCULATING dj/dz");
+            // println!("CALCULATING dj/dz");
             match num {
                 0 => {
                     // check matrix dimensions
@@ -112,16 +122,17 @@ impl<T: ValidNumber<T>> Model<T> {
             // println!("\n dj/dz {:?}\n\n", step_gradient);
 
             // Multiply by respective previous layers' activation
-            //println!("CALCULATING dj/dw");
+            // println!("CALCULATING dj/dw");
             let partial_loss_weight: Tensor<T> =
                 step_gradient.matrix_multiply(&previous_activation.transposed())?;
-            //println!("{:?} \n", dj_dw);
+            // println!("{:?} \n", partial_loss_weight);
             weight_updates.push(partial_loss_weight);
             // println!("{weight_updates:?}");
             prev_layer = Some(layer);
         }
 
         // Note weight updates stores the LAST layers' weight FIRST!
+        //println!("weight updates : {weight_updates:?}");
         Ok(weight_updates)
     }
 
@@ -131,7 +142,7 @@ impl<T: ValidNumber<T>> Model<T> {
         output: &Tensor<T>,
     ) -> Result<(Vec<Tensor<T>>, T), ()> {
         let result = self.evaluate(input)?;
-        //println!("\nRES {result:?} \n REAL {output:?}\n");
+        // println!("\nRES {result:?} \n REAL {output:?}\n");
         let loss: T = self.loss.calculate_loss(result, output.clone())?;
 
         let (z_steps, mut a_steps) = self.forward_pass(input)?;
@@ -143,6 +154,8 @@ impl<T: ValidNumber<T>> Model<T> {
             .expect("No activations created during forward pass!");
         let loss_gradient = self.loss.get_gradient(last_activation, output.clone())?;
 
+        // println!("loss grad {loss_gradient:?}");
+
         Ok((self.backward_pass(a_steps, z_steps, loss_gradient)?, loss))
     }
 
@@ -153,17 +166,18 @@ impl<T: ValidNumber<T>> Model<T> {
     ) -> Result<(), ()> {
         self.layers
             .iter_mut()
-            .zip(weight_updates.iter())
+            .zip(weight_updates.iter().rev())
             .map(|(layer, update)| {
                 let current_weights = layer.get_weights();
                 if current_weights.shape() != update.shape() {
                     Err(())
                 } else {
-                    layer.set_weights(current_weights - (update.clone() * learning_rate));
+                    let new_weights = current_weights - (update.clone() * learning_rate);
+                    layer.set_weights(new_weights);
                     Ok(())
                 }
             })
-            .collect()
+            .collect::<Result<(), ()>>()
     }
 
     //     pub fn gradient_check(
@@ -220,11 +234,13 @@ impl<T: ValidNumber<T>> Model<T> {
             println!("EPOCH #{epoch}");
             let (mut average_loss, mut inputs) = (0.0, 0.0);
             for (input, output) in data_iter.clone() {
-                //println!("train input - {:?} output - {:?}", input, output);
+                // println!("train input - {:?} output - {:?}", input, output);
                 let (weight_updates, loss) = self.one_pass(input, output)?;
                 // println!("INPUT {inputs:?} LOSS {loss:?}");
                 // self.gradient_check(weight_updates.clone(), input, output, 0.01);
                 self.update_weights(weight_updates, learning_rate)?;
+
+                // println!("l1w = {}", self.layers[0].get_weights());
 
                 average_loss += loss.into();
                 inputs += 1.0;

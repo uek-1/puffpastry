@@ -141,14 +141,13 @@ mod test {
             .unwrap();
 
         println!("0 XOR 1 =  {:?}", res);
-        // assert!(res > 0.8);
+        assert!(res.data[0] > 0.8);
 
         let res = model
             .evaluate(&Tensor::from(vec![vec![1.0], vec![1.0]]))
             .unwrap();
 
         println!("1 XOR 1 = {res}");
-        // assert!(res < 0.3);
-        assert!(false);
+        assert!(res.data[0] < 0.3);
     }
 }
