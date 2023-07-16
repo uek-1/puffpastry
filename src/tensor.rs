@@ -30,8 +30,7 @@ impl<T: ValidNumber<T>> Tensor<T> {
         self.data.iter()
     }
 
-    // TODO: FIX THIS METHOD!
-    fn calculate_data_index(&self, loc: &[usize]) -> usize {
+    pub fn calculate_data_index(&self, loc: &[usize]) -> usize {
         loc.into_iter()
             .rev()
             .enumerate()
@@ -40,7 +39,13 @@ impl<T: ValidNumber<T>> Tensor<T> {
                     + loc_val
                         * match loc_idx {
                             0 => 1,
-                            _ => self.shape[loc_idx],
+                            _ => self
+                                .shape
+                                .clone()
+                                .iter()
+                                .rev()
+                                .take(loc_idx)
+                                .fold(1, |prod, x| prod * x),
                         }
             })
     }
@@ -364,6 +369,30 @@ mod test {
             ]),
             res
         )
+    }
+
+    #[test]
+    fn index_calc_test() {
+        let data: Vec<f64> = (0..=8).into_iter().map(|x| x as f64).collect();
+
+        let tensor1d = Tensor {
+            shape: vec![8],
+            data: data.clone(),
+        };
+
+        let tensor2d = Tensor {
+            shape: vec![2, 4],
+            data: data.clone(),
+        };
+
+        let tensor3d = Tensor {
+            shape: vec![2, 2, 2],
+            data: data.clone(),
+        };
+
+        assert_eq!(tensor1d.calculate_data_index(&[2]), 2);
+        assert_eq!(tensor2d.calculate_data_index(&[1, 1]), 5);
+        assert_eq!(tensor3d.calculate_data_index(&[1, 1, 0]), 6);
     }
 
     #[test]

@@ -196,11 +196,8 @@ mod test {
             vec![vec![0.0, 0.0], vec![0.0, 0.0]],
         ]);
 
-        println!("{input:?}");
-        assert_eq!(Some(&0.0), input.get(&[1, 0, 0]));
+        let res = conv2d.convolve2d(input, vec![0, 0, 0], 0);
 
-        let res = conv2d.convolve2d(input, vec![0, 0, 0], 0).unwrap();
-
-        assert_eq!(res, 10.0);
+        assert_eq!(res, Ok(10.0));
     }
 }
