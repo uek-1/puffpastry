@@ -113,8 +113,8 @@ impl<T: ValidNumber<T>> Conv2d<T> {
     }
 
     // export .depth, .cols, .rows into sep function
-    fn convolve2d(&self, input: Tensor<T>, loc: Vec<usize>, filter_num: usize) -> Result<T, ()> {
-        if input.rank() != 3 || self.get_weights().shape()[1] != input.shape()[0] || loc.len() != 3
+    fn convolve2d(&self, input: &Tensor<T>, loc: Vec<usize>, filter_num: usize) -> Result<T, ()> {
+        if input.rank() != 3 || self.get_weights().shape()[1] != input.shape()[0] || loc.len() != 2
         {
             return Err(());
         }
@@ -129,7 +129,7 @@ impl<T: ValidNumber<T>> Conv2d<T> {
         for i in 0..depth {
             for j in 0..height {
                 for k in 0..width {
-                    let input_loc = vec![loc[0] + i, loc[1] + j, loc[2] + k];
+                    let input_loc = vec![i, loc[0] + j, loc[1] + k];
                     let filter_loc: Vec<usize> = filter_loc
                         .iter()
                         .chain(input_loc.clone().iter())
@@ -147,19 +147,50 @@ impl<T: ValidNumber<T>> Conv2d<T> {
 
         Ok(out)
     }
+
+    fn convolve2d_all(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()> {
+        let mut data: Vec<T> = vec![];
+
+        let filter_count = self.weights.shape()[0];
+        let filter_height = self.weights.shape()[2];
+        let input_height = input.shape()[1];
+        let filter_width = self.weights.shape()[3];
+        let input_width = input.shape()[2];
+
+        for fnum in 0..filter_count {
+            for height in 0..(input_height - filter_height + 1) {
+                for width in 0..(input_width - filter_width + 1) {
+                    let loc = vec![fnum, height, width];
+                    println!("current conv loc {loc:?}");
+                    let item = self.convolve2d(input, vec![height, width], fnum)?;
+                    data.push(item);
+                }
+            }
+        }
+
+        Ok(Tensor {
+            shape: vec![
+                filter_count,
+                (input_height - filter_height + 1),
+                (input_width - filter_width + 1),
+            ],
+            data: data,
+        })
+    }
 }
 
 impl<T: ValidNumber<T>> Layer<T> for Conv2d<T> {
     fn evaluate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()> {
-        todo!("not yet implemented")
+        let preactivation = self.preactivate(input)?;
+        self.activate(&preactivation)
     }
 
     fn preactivate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()> {
-        todo!("not yet implemented")
+        self.convolve2d_all(input)
     }
 
     fn activate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()> {
-        todo!("not yet implemented")
+        self.activation.activate_tensor(input)
     }
 
     fn get_weights(&self) -> Tensor<T> {
@@ -196,7 +227,7 @@ mod test {
             vec![vec![0.0, 0.0], vec![0.0, 0.0]],
         ]);
 
-        let res = conv2d.convolve2d(input, vec![0, 0, 0], 0);
+        let res = conv2d.convolve2d(&input, vec![0, 0], 0);
 
         assert_eq!(res, Ok(10.0));
     }
