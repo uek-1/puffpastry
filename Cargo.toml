@@ -7,7 +7,7 @@ description = "basic rust neural network framework"
 readme = "README.md"
 repository = "https://github.com/uek-1/puffpastry"
 keywords = [
-  "neural-network", "feedforward-neural-netowrk", "machine-learning"
+  "neural-network", "feedforward-netowrk", "machine-learning"
 ]
 
 
