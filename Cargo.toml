@@ -2,6 +2,14 @@
 name = "puffpastry"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+description = "basic rust neural network framework"
+readme = "README.md"
+repository = "https://github.com/uek-1/puffpastry"
+keywords = [
+  "neural-network", "feedforward-neural-netowrk", "machine-learning"
+]
+
 
 [lib]
 name = "puffpastry"
@@ -17,3 +25,7 @@ path = "src/main.rs"
 [dependencies]
 csv = "1.2.2"
 rand = "0.8.5"
+
+
+
+
