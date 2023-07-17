@@ -55,6 +55,13 @@ impl<T: ValidNumber<T>> Tensor<T> {
             return None;
         }
 
+        if (0..loc.len())
+            .into_iter()
+            .any(|idx| loc[idx] >= self.shape[idx])
+        {
+            return None;
+        }
+
         let idx = self.calculate_data_index(loc);
         self.data.get(idx)
     }

@@ -180,46 +180,61 @@ impl<T: ValidNumber<T>> Model<T> {
             .collect::<Result<(), ()>>()
     }
 
-    //     pub fn gradient_check(
-    //         &self,
-    //         mut weight_updates: Vec<Vec<Vec<T>>>,
-    //         input: &Vec<T>,
-    //         output: &Vec<T>,
-    //         epsilon: f64,
-    //     ) {
-    //         // VERY INTENSIVE! WILL SLOW DOWN NETWORK SIGNFICANTLY!
-    //         for layer in 0..self.layers.len() {
-    //             let update = weight_updates
-    //                 .pop()
-    //                 .expect("Couldn't find weight updates for layer {layer}");
-    //             for neuron in 0..self.layers[layer].weights.len() {
-    //                 for weight in 0..self.layers[layer].weights[neuron].len() {
-    //                     match (neuron, weight) {
-    //                         (x, y) if x > 5 || y > 5 => continue,
-    //                         _ => (),
-    //                     }
+    // TODO: Very hacky implementation, needs fixing!
+    pub fn gradient_check(
+        &mut self,
+        mut weight_updates: Vec<Tensor<T>>,
+        input: &Tensor<T>,
+        output: &Tensor<T>,
+        epsilon: f64,
+    ) -> Result<(), ()> {
+        // VERY INTENSIVE! WILL SLOW DOWN NETWORK SIGNFICANTLY!
+        for layer in 0..self.layers.len() {
+            let update = weight_updates
+                .pop()
+                .expect("Couldn't find weight updates for layer {layer}");
 
-    //                     let mut alt = self.clone();
-    //                     alt.layers[layer].weights[neuron][weight] =
-    //                         alt.layers[layer].weights[neuron][weight] + T::from(epsilon);
-    //                     let (_, inc) = alt.one_pass(input, output);
+            let layer_weights = self.layers[layer].get_weights();
+            let param_count = layer_weights.data.len();
 
-    //                     let mut alt = self.clone();
-    //                     alt.layers[layer].weights[neuron][weight] =
-    //                         alt.layers[layer].weights[neuron][weight] - T::from(epsilon);
-    //                     let (_, dec) = alt.one_pass(input, output);
+            for param in 0..param_count {
+                // Check only 5 trainable values per layer.
+                if param > 5 {
+                    break;
+                }
 
-    //                     let res = (inc - dec) / T::from(2.0 * epsilon);
-    //                     match (update[neuron][weight] - res).into().abs() < epsilon {
-    //                         true => (),
-    //                         false => {
-    //                             panic!("Gradient checking failed : layer: {:?} {:?},  neuron: {} weight: {:?} finite_difference: {:?} output{:?}", layer, self.layers[layer].activation, neuron, update[neuron][weight], res, output);
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
+                let original = update.data[param];
+
+                let mut inc_weights = layer_weights.clone();
+                let mut dec_weights = layer_weights.clone();
+                inc_weights.data[param] = inc_weights.data[param] + T::from(epsilon);
+                dec_weights.data[param] = dec_weights.data[param] - T::from(epsilon);
+
+                self.layers[layer].set_weights(inc_weights);
+                let (_, inc) = self
+                    .one_pass(input, output)
+                    .expect("Failed to train during gradient checking!");
+
+                self.layers[layer].set_weights(dec_weights);
+                let (_, dec) = self
+                    .one_pass(input, output)
+                    .expect("Failed to train during gradient checking!");
+
+                self.layers[layer].set_weights(layer_weights.clone());
+
+                let res = (inc - dec) / T::from(2.0 * epsilon);
+                match (original - res).into().abs() < epsilon {
+                    true => (),
+                    false => {
+                        println!("Gradient checking failed : layer: #{:?},  finite_difference: {:?} output{:?}", layer, res, original);
+                        return Err(());
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
 
     pub fn fit(
         &mut self,
@@ -237,7 +252,7 @@ impl<T: ValidNumber<T>> Model<T> {
                 // println!("train input - {:?} output - {:?}", input, output);
                 let (weight_updates, loss) = self.one_pass(input, output)?;
                 // println!("INPUT {inputs:?} LOSS {loss:?}");
-                // self.gradient_check(weight_updates.clone(), input, output, 0.01);
+                //self.gradient_check(weight_updates.clone(), input, output, 0.01)?;
                 self.update_weights(weight_updates, learning_rate)?;
 
                 // println!("l1w = {}", self.layers[0].get_weights());

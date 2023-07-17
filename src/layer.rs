@@ -97,6 +97,7 @@ pub struct Conv2d<T: ValidNumber<T>> {
     activation: Activation,
 }
 
+// Note: assumes 0 if out of boundary on input
 impl<T: ValidNumber<T>> Conv2d<T> {
     pub fn from_size(
         input_depth: usize,
@@ -123,22 +124,16 @@ impl<T: ValidNumber<T>> Conv2d<T> {
         let height = self.get_weights().shape()[2];
         let width = self.get_weights().shape()[3];
 
-        let filter_loc = vec![filter_num];
-
         let mut out = T::from(0.0);
         for i in 0..depth {
             for j in 0..height {
                 for k in 0..width {
                     let input_loc = vec![i, loc[0] + j, loc[1] + k];
-                    let filter_loc: Vec<usize> = filter_loc
-                        .iter()
-                        .chain(input_loc.clone().iter())
-                        .cloned()
-                        .collect();
+                    let filter_loc: Vec<usize> = vec![filter_num, i, j, k];
 
                     println!("multiplying filter {filter_loc:?} with input {input_loc:?}");
                     let filter_item = *self.weights.get(&filter_loc).ok_or(())?;
-                    let input_item = *input.get(&input_loc).ok_or(())?;
+                    let input_item = *input.get(&input_loc).unwrap_or(&T::from(0.0));
                     println!("filter {filter_item:?} * input {input_item:?}");
                     out = out + (filter_item * input_item);
                 }
@@ -158,8 +153,8 @@ impl<T: ValidNumber<T>> Conv2d<T> {
         let input_width = input.shape()[2];
 
         for fnum in 0..filter_count {
-            for height in 0..(input_height - filter_height + 1) {
-                for width in 0..(input_width - filter_width + 1) {
+            for height in 0..(input_height) {
+                for width in 0..(input_width) {
                     let loc = vec![fnum, height, width];
                     println!("current conv loc {loc:?}");
                     let item = self.convolve2d(input, vec![height, width], fnum)?;
@@ -169,11 +164,7 @@ impl<T: ValidNumber<T>> Conv2d<T> {
         }
 
         Ok(Tensor {
-            shape: vec![
-                filter_count,
-                (input_height - filter_height + 1),
-                (input_width - filter_width + 1),
-            ],
+            shape: vec![filter_count, input_height, input_width],
             data: data,
         })
     }
@@ -230,5 +221,30 @@ mod test {
         let res = conv2d.convolve2d(&input, vec![0, 0], 0);
 
         assert_eq!(res, Ok(10.0));
+    }
+
+    #[test]
+    fn convolve_multiple_test() {
+        let weights = Tensor {
+            shape: vec![1, 2, 2, 2],
+            data: vec![1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0],
+        };
+
+        let conv2d: Conv2d<f64> = Conv2d {
+            weights,
+            activation: Activation::None,
+        };
+
+        let input = Tensor::from(vec![
+            vec![vec![1.0, 1.0], vec![1.0, 1.0]],
+            vec![vec![0.0, 0.0], vec![0.0, 0.0]],
+        ]);
+
+        let res = conv2d.convolve2d_all(&input);
+
+        let expec = Tensor::from(vec![vec![vec![10.0, 4.0], vec![3.0, 1.0]]]);
+
+        println!("{res:?}");
+        assert_eq!(res, Ok(expec));
     }
 }
