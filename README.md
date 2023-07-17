@@ -1,5 +1,8 @@
 # puffpastry
 
+[![crates.io](https://img.shields.io/crates/v/puffpastry.svg)](https://crates.io/crates/puffpastry)
+[![docs.rs](https://docs.rs/puffpastry/badge.svg)](https://docs.rs/puffpastry/)
+
 ```puffpastry``` is a very basic feedforward neuron network library with a focus on parity with mathematical representations. It can be used to create and train simple models. 
 ## Usage
 ```puffpastry``` is used very similarly to keras - stack layers and fit to training data.  
