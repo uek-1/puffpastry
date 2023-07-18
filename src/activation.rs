@@ -1,5 +1,4 @@
-use crate::tensor::Tensor;
-use crate::vec_tools::{Transpose, ValidNumber};
+use super::{Tensor, ValidNumber};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Activation {

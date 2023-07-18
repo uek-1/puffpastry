@@ -1,7 +1,4 @@
-use crate::{
-    vec_tools::{self, Transpose, ValidNumber},
-    Activation, Tensor,
-};
+use super::{Tensor, ValidNumber};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Loss {

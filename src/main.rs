@@ -1,18 +1,7 @@
-use crate::{layer::Dense, model::Model};
 use csv::{Reader, StringRecord};
+use puffpastry::*;
 use rand::{self, Rng};
 use std::fmt;
-
-mod activation;
-mod layer;
-mod loss;
-mod model;
-mod tensor;
-mod vec_tools;
-
-use activation::Activation;
-use loss::Loss;
-use tensor::Tensor;
 
 fn main() {
     let mut model: Model<f64> = Model::from_layers(
@@ -29,7 +18,7 @@ fn main() {
     let labels = 10;
 
     for (num, record) in mnist_reader.records().enumerate() {
-        if num > 60000 {
+        if num > 1000 {
             break;
         }
 
