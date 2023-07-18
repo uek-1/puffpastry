@@ -1,5 +1,5 @@
 use crate::activation::Activation;
-use crate::layer::{Conv2d, Dense, Layer, MaxPool2d};
+use crate::layer::{Conv2d, Dense, Flatten, Layer, MaxPool2d};
 use crate::loss::Loss;
 use crate::tensor::Tensor;
 use crate::vec_tools::{
@@ -287,14 +287,18 @@ mod test {
     #[test]
     fn conv_feedforward_test() {
         let input = Tensor::from(vec![vec![
-            vec![1.0, 2.0, 3.0],
-            vec![4.0, 5.0, 6.0],
-            vec![7.0, 8.0, 9.0],
+            vec![1.0, 2.0, 3.0, 4.0],
+            vec![5.0, 6.0, 7.0, 8.0],
+            vec![9.0, 10.0, 11.0, 12.0],
+            vec![13.0, 14.0, 15.0, 16.0],
         ]]);
 
         let mut model: Model<f64> = Model::new(Loss::MeanSquaredError);
-        model.push_layer(Conv2d::from_size(1, 3, 3, (1, 1), Activation::None));
-        model.push_layer(MaxPool2d::new(1, 1));
+        model.push_layer(Conv2d::from_size(1, 2, 4, (1, 1), Activation::None));
+        model.push_layer(MaxPool2d::new(2, 2));
+        model.push_layer(Conv2d::from_size(4, 2, 8, (1, 1), Activation::Sigmoid));
+        model.push_layer(Flatten {});
+        model.push_layer(Dense::from_size(32, 10, Activation::Softmax));
 
         let res = model.evaluate(&input).unwrap();
 

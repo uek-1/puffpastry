@@ -288,6 +288,35 @@ impl<T: ValidNumber<T>> Layer<T> for MaxPool2d {
     }
 }
 
+#[derive(Debug)]
+pub struct Flatten {}
+
+impl<T: ValidNumber<T>> Layer<T> for Flatten {
+    fn evaluate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()> {
+        self.preactivate(input)
+    }
+
+    fn preactivate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()> {
+        Ok(Tensor::column(input.data.clone()))
+    }
+
+    fn activate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()> {
+        Ok(input.clone())
+    }
+
+    fn get_weights(&self) -> Tensor<T> {
+        panic!("No weights on a flatten layer!")
+    }
+
+    fn set_weights(&mut self, new_weights: Tensor<T>) {
+        panic!("No weights on a flatten layer!")
+    }
+
+    fn get_activation(&self) -> Activation {
+        panic!("No weights on a flatten layer!")
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
