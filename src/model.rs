@@ -1,5 +1,5 @@
 use crate::activation::Activation;
-use crate::layer::Layer;
+use crate::layer::{Conv2d, Dense, Layer, MaxPool2d};
 use crate::loss::Loss;
 use crate::tensor::Tensor;
 use crate::vec_tools::{
@@ -29,6 +29,11 @@ impl<T: ValidNumber<T>> Model<T> {
         }
 
         Model { layers: new, loss }
+    }
+
+    pub fn push_layer(&mut self, layer: impl Layer<T> + 'static) {
+        let item: Box<dyn Layer<T>> = Box::new(layer);
+        self.layers.push(item);
     }
 
     fn forward_pass(&self, input: &Tensor<T>) -> Result<(Vec<Tensor<T>>, Vec<Tensor<T>>), ()> {
@@ -272,5 +277,28 @@ impl<T: ValidNumber<T>> Model<T> {
         self.layers
             .iter()
             .fold(Ok(input.clone()), |temp, layer| layer.evaluate(&temp?))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn conv_feedforward_test() {
+        let input = Tensor::from(vec![vec![
+            vec![1.0, 2.0, 3.0],
+            vec![4.0, 5.0, 6.0],
+            vec![7.0, 8.0, 9.0],
+        ]]);
+
+        let mut model: Model<f64> = Model::new(Loss::MeanSquaredError);
+        model.push_layer(Conv2d::from_size(1, 3, 3, (1, 1), Activation::None));
+        model.push_layer(MaxPool2d::new(1, 1));
+
+        let res = model.evaluate(&input).unwrap();
+
+        println!("{res:?}");
+        assert!(false)
     }
 }

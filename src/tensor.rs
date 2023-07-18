@@ -167,10 +167,7 @@ impl<T: ValidNumber<T>> From<Vec<T>> for Tensor<T> {
 impl<T: ValidNumber<T>> From<Vec<Vec<T>>> for Tensor<T> {
     fn from(value: Vec<Vec<T>>) -> Self {
         let shape = vec![value.len(), value[0].len()];
-        let data: Vec<T> = value.into_iter().fold(vec![], |mut data, mut x| {
-            data.append(&mut x);
-            data
-        });
+        let data: Vec<T> = value.into_iter().flatten().collect();
 
         Tensor { shape, data }
     }
@@ -179,15 +176,7 @@ impl<T: ValidNumber<T>> From<Vec<Vec<T>>> for Tensor<T> {
 impl<T: ValidNumber<T>> From<Vec<Vec<Vec<T>>>> for Tensor<T> {
     fn from(value: Vec<Vec<Vec<T>>>) -> Self {
         let shape = vec![value.len(), value[0].len(), value[0][1].len()];
-        let mut data: Vec<T> = vec![];
-
-        for layer in value {
-            for row in layer {
-                for item in row {
-                    data.push(item)
-                }
-            }
-        }
+        let data: Vec<T> = value.into_iter().flatten().flatten().collect();
 
         Tensor { shape, data }
     }
