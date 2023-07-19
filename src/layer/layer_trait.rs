@@ -13,7 +13,7 @@ pub trait Layer<T: ValidNumber<T>>: Debug {
 
     fn get_activation(&self) -> Option<Activation>;
 
-    fn input_derivative(&self, step_grad: &Tensor<T>) -> Result<Tensor<T>, ()>;
+    fn input_derivative(&self, input: &Tensor<T>, step_grad: &Tensor<T>) -> Result<Tensor<T>, ()>;
 
     fn weights_derivative(
         &self,

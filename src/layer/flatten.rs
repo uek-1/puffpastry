@@ -28,8 +28,13 @@ impl<T: ValidNumber<T>> Layer<T> for Flatten {
         None
     }
 
-    fn input_derivative(&self, step_grad: &Tensor<T>) -> Result<Tensor<T>, ()> {
-        Ok(step_grad.clone())
+    // UNTESTED
+    fn input_derivative(&self, input: &Tensor<T>, step_grad: &Tensor<T>) -> Result<Tensor<T>, ()> {
+        let reshaped = Tensor {
+            shape: input.shape().clone(),
+            data: step_grad.data.clone(),
+        };
+        Ok(reshaped)
     }
 
     fn weights_derivative(

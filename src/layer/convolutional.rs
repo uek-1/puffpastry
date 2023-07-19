@@ -163,7 +163,7 @@ impl<T: ValidNumber<T>> Layer<T> for Conv2d<T> {
         Some(self.activation.clone())
     }
 
-    fn input_derivative(&self, step_grad: &Tensor<T>) -> Result<Tensor<T>, ()> {
+    fn input_derivative(&self, input: &Tensor<T>, step_grad: &Tensor<T>) -> Result<Tensor<T>, ()> {
         // step_grad is dj/dz at this point, so it's the size of the output of this layer. This function calculates the derivative for the input
 
         let &[input_depth, input_height, input_width] = &self.input_shape[..] else {

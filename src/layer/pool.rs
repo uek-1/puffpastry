@@ -36,6 +36,38 @@ impl MaxPool2d {
             .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .ok_or(())
     }
+
+    fn max_pool_derivative_tensor<T: ValidNumber<T>>(
+        &self,
+        loc: Vec<usize>,
+        input: &Tensor<T>,
+        step_grad: &Tensor<T>,
+        out: &mut Tensor<T>,
+    ) {
+        let (window_height, window_width) = self.window;
+
+        let mut max_loc = loc.clone();
+
+        for i in 0..window_height {
+            for j in 0..window_width {
+                let mut current_loc = loc.clone();
+                current_loc[1] += i;
+                current_loc[2] += j;
+
+                let (max, curr) = (
+                    input.get(&max_loc).unwrap(),
+                    input.get(&current_loc).unwrap(),
+                );
+
+                if curr > max {
+                    max_loc = current_loc;
+                }
+            }
+        }
+
+        let step_grad_comp = *step_grad.get(&loc).unwrap();
+        *out.get_mut(&max_loc).unwrap() = step_grad_comp;
+    }
 }
 
 impl<T: ValidNumber<T>> Layer<T> for MaxPool2d {
@@ -86,8 +118,29 @@ impl<T: ValidNumber<T>> Layer<T> for MaxPool2d {
         None
     }
 
-    fn input_derivative(&self, step_grad: &Tensor<T>) -> Result<Tensor<T>, ()> {
-        todo!()
+    fn input_derivative(&self, input: &Tensor<T>, step_grad: &Tensor<T>) -> Result<Tensor<T>, ()> {
+        let mut out = Tensor::new(input.shape().clone());
+
+        let [input_depth, input_height, input_width] = input.shape()[..] else {
+            return Err(())
+        };
+
+        let (window_height, window_width) = self.window;
+
+        for depth in 0..input_depth {
+            for height in (0..input_height).step_by(window_height) {
+                for width in (0..input_width).step_by(window_width) {
+                    self.max_pool_derivative_tensor(
+                        vec![depth, height, width],
+                        input,
+                        step_grad,
+                        &mut out,
+                    );
+                }
+            }
+        }
+
+        Ok(out)
     }
 
     fn weights_derivative(
@@ -96,5 +149,24 @@ impl<T: ValidNumber<T>> Layer<T> for MaxPool2d {
         step_grad: &Tensor<T>,
     ) -> Result<Option<Tensor<T>>, ()> {
         Ok(None)
+    }
+}
+
+#[cfg(test)]
+
+mod test {
+    use super::*;
+
+    #[test]
+    fn maxpoolderivative() {
+        let input = Tensor::from(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]);
+        let step_grad = Tensor::from(vec![vec![vec![5.0]]]);
+        let mp = MaxPool2d::new(2, 2);
+
+        println!("{:?}, {:?}", input.shape(), step_grad.shape());
+        let res = mp.input_derivative(&input, &step_grad);
+
+        println!("{res:?}");
+        assert_eq!(res.unwrap().data, vec![0.0, 0.0, 0.0, 5.0])
     }
 }

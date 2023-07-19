@@ -68,7 +68,7 @@ impl<T: ValidNumber<T>> Layer<T> for Dense<T> {
         Some(self.activation.clone())
     }
 
-    fn input_derivative(&self, step_grad: &Tensor<T>) -> Result<Tensor<T>, ()> {
+    fn input_derivative(&self, input: &Tensor<T>, step_grad: &Tensor<T>) -> Result<Tensor<T>, ()> {
         self.weights.transposed().matrix_multiply(step_grad)
     }
 

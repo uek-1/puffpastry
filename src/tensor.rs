@@ -175,7 +175,7 @@ impl<T: ValidNumber<T>> From<Vec<Vec<T>>> for Tensor<T> {
 
 impl<T: ValidNumber<T>> From<Vec<Vec<Vec<T>>>> for Tensor<T> {
     fn from(value: Vec<Vec<Vec<T>>>) -> Self {
-        let shape = vec![value.len(), value[0].len(), value[0][1].len()];
+        let shape = vec![value.len(), value[0].len(), value[0][0].len()];
         let data: Vec<T> = value.into_iter().flatten().flatten().collect();
 
         Tensor { shape, data }

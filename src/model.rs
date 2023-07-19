@@ -72,7 +72,7 @@ impl<T: ValidNumber<T>> Model<T> {
 
             // How the next (in model) layer's preactivation depends on this layers activation
             let partial_prevpreactiv_activation = match prev_layer {
-                Some(prev) => prev.input_derivative(&step_gradient)?,
+                Some(prev) => prev.input_derivative(&previous_activation, &step_gradient)?,
                 None => step_gradient.clone(),
             };
 
