@@ -4,18 +4,21 @@ use super::{Activation, Layer, Rng, Tensor, ValidNumber};
 pub struct Conv2d<T: ValidNumber<T>> {
     weights: Tensor<T>,
     activation: Activation,
+    stride: (usize, usize),
+    input_shape: Vec<usize>,
 }
 
 // Note: assumes 0 if out of boundary on input
 impl<T: ValidNumber<T>> Conv2d<T> {
     pub fn from_size(
-        input_depth: usize,
+        input_shape: Vec<usize>,
         filter_size: usize,
         filter_count: usize,
         stride: (usize, usize),
         activation: Activation,
     ) -> Self {
         let mut rng = rand::thread_rng();
+        let input_depth = input_shape[0];
         let mut weights = Tensor::new(vec![filter_count, input_depth, filter_size, filter_size]);
 
         weights
@@ -26,6 +29,8 @@ impl<T: ValidNumber<T>> Conv2d<T> {
         Conv2d {
             weights,
             activation,
+            stride,
+            input_shape,
         }
     }
 
@@ -48,10 +53,8 @@ impl<T: ValidNumber<T>> Conv2d<T> {
                     let input_loc = vec![i, loc[0] + j, loc[1] + k];
                     let filter_loc: Vec<usize> = vec![filter_num, i, j, k];
 
-                    println!("multiplying filter {filter_loc:?} with input {input_loc:?}");
                     let filter_item = *self.weights.get(&filter_loc).ok_or(())?;
                     let input_item = *input.get(&input_loc).unwrap_or(&T::from(0.0));
-                    println!("filter {filter_item:?} * input {input_item:?}");
                     out = out + (filter_item * input_item);
                 }
             }
@@ -74,7 +77,6 @@ impl<T: ValidNumber<T>> Conv2d<T> {
             for height in 0..(input_height) {
                 for width in 0..(input_width) {
                     let loc = vec![fnum, height, width];
-                    println!("current conv loc {loc:?}");
                     let item = self.convolve2d(input, vec![height, width], fnum)?;
                     data.push(item);
                 }
@@ -86,6 +88,48 @@ impl<T: ValidNumber<T>> Conv2d<T> {
             data: data,
         })
     }
+
+    fn input_derivative_helper(&self, loc: &[usize], step_grad: &Tensor<T>, out: &mut Tensor<T>) {
+        // iterate through the volume that created this output value:
+        // rangewidth [width, width + filter_width)
+        // rangeheight [height, height + filter_height)
+        // rangedepth [0, input_depth)
+        // add fitler[rangedepth][rangeheight][rangewidth] * stepgrad[d,h,w] to input[rd, rh, rw].
+        //conv_input_derivative_adder (priv functino)
+        // - creates volume
+        // - iterates through volume
+        // - calculates dj/dx the position (filter w * dj/dz)
+        // - adds to &mut out.
+        let &[_, filter_depth, filter_height, filter_width] = &self.weights.shape()[..] else {
+            panic!()
+        };
+
+        let &[output_depth, output_height, output_width] = loc else {
+            panic!()
+        };
+
+        let range_depth = 0..filter_depth;
+        let range_height = output_height..(output_height + filter_height);
+        let range_width = output_width..(output_width + filter_width);
+
+        for depth in range_depth {
+            for height in range_height.clone() {
+                for width in range_width.clone() {
+                    let filter_weight = *self
+                        .weights
+                        .get(&[output_depth, depth, height, width])
+                        .unwrap();
+
+                    let step_grad_derivative = *step_grad.get(loc).unwrap();
+
+                    match out.get_mut(&[depth, height, width]) {
+                        Some(x) => *x = filter_weight * step_grad_derivative,
+                        None => panic!(),
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl<T: ValidNumber<T>> Layer<T> for Conv2d<T> {
@@ -95,6 +139,10 @@ impl<T: ValidNumber<T>> Layer<T> for Conv2d<T> {
     }
 
     fn preactivate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()> {
+        if input.shape() != &self.input_shape {
+            return Err(());
+        }
+
         self.convolve2d_all(input)
     }
 
@@ -116,7 +164,27 @@ impl<T: ValidNumber<T>> Layer<T> for Conv2d<T> {
     }
 
     fn input_derivative(&self, step_grad: &Tensor<T>) -> Result<Tensor<T>, ()> {
-        todo!()
+        // step_grad is dj/dz at this point, so it's the size of the output of this layer. This function calculates the derivative for the input
+
+        let &[input_depth, input_height, input_width] = &self.input_shape[..] else {
+            panic!("Should be unreachable! - input shape should be rank 3 for conv")
+        };
+
+        let [output_depth, output_height, output_width] = step_grad.shape()[..] else {
+            panic!("Should be unreachable - output shape should be rank 3 for conv")
+        };
+
+        let mut out = Tensor::new(vec![input_depth, input_height, input_width]);
+
+        for depth in 0..output_depth {
+            for height in 0..output_height {
+                for width in 0..output_width {
+                    self.input_derivative_helper(&[depth, width, height], step_grad, &mut out);
+                }
+            }
+        }
+
+        Ok(out)
     }
 
     fn weights_derivative(
@@ -142,6 +210,8 @@ mod test {
         let conv2d: Conv2d<f64> = Conv2d {
             weights,
             activation: Activation::None,
+            stride: (1, 1),
+            input_shape: vec![1, 2, 2],
         };
 
         let input = Tensor::from(vec![
@@ -164,6 +234,8 @@ mod test {
         let conv2d: Conv2d<f64> = Conv2d {
             weights,
             activation: Activation::None,
+            stride: (1, 1),
+            input_shape: vec![1, 2, 2],
         };
 
         let input = Tensor::from(vec![
@@ -205,6 +277,8 @@ mod test {
         let conv2d: Conv2d<f64> = Conv2d {
             weights,
             activation: Activation::None,
+            stride: (1, 1),
+            input_shape: vec![1, 2, 2],
         };
 
         let input = Tensor::from(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]);

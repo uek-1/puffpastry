@@ -291,9 +291,21 @@ mod test {
         ]]);
 
         let mut model: Model<f64> = Model::new(Loss::MeanSquaredError);
-        model.push_layer(Conv2d::from_size(1, 2, 4, (1, 1), Activation::None));
+        model.push_layer(Conv2d::from_size(
+            vec![1, 4, 4],
+            2,
+            4,
+            (1, 1),
+            Activation::None,
+        ));
         model.push_layer(MaxPool2d::new(2, 2));
-        model.push_layer(Conv2d::from_size(4, 2, 8, (1, 1), Activation::Sigmoid));
+        model.push_layer(Conv2d::from_size(
+            vec![4, 2, 2],
+            2,
+            8,
+            (1, 1),
+            Activation::Sigmoid,
+        ));
         model.push_layer(Flatten {});
         model.push_layer(Dense::from_size(32, 10, Activation::Softmax));
 

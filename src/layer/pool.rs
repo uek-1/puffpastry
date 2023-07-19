@@ -69,12 +69,15 @@ impl<T: ValidNumber<T>> Layer<T> for MaxPool2d {
 
         Ok(Tensor { shape, data })
     }
+
     fn activate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()> {
         Ok(input.clone())
     }
+
     fn get_weights(&self) -> Option<Tensor<T>> {
         None
     }
+
     fn set_weights(&mut self, new_weights: Tensor<T>) -> Result<(), ()> {
         Err(())
     }
