@@ -131,7 +131,7 @@ impl<T: ValidNumber<T>> Conv2d<T> {
                     match out.get_mut(&[depth, height, width]) {
                         //broek!
                         Some(x) => *x = *x + (filter_weight * step_grad_derivative),
-                        None => panic!(),
+                        None => (),
                     }
                 }
             }

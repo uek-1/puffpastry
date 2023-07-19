@@ -65,7 +65,11 @@ impl MaxPool2d {
             }
         }
 
-        let step_grad_comp = *step_grad.get(&loc).unwrap();
+        let mut scaled_loc = loc.clone();
+        scaled_loc[1] = scaled_loc[1] / window_height;
+        scaled_loc[2] = scaled_loc[2] / window_width;
+
+        let step_grad_comp = *step_grad.get(&scaled_loc).unwrap();
         *out.get_mut(&max_loc).unwrap() = step_grad_comp;
     }
 }

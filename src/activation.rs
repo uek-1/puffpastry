@@ -88,6 +88,13 @@ impl Activation {
 
     //TODO : check for errors here!
     pub fn derivative<T: ValidNumber<T>>(&self, preactivations: &Tensor<T>) -> Tensor<T> {
+        match preactivations.rank() {
+            2 => self.derivative2d(preactivations),
+            _ => self.derivative_naive(preactivations),
+        }
+    }
+
+    fn derivative2d<T: ValidNumber<T>>(&self, preactivations: &Tensor<T>) -> Tensor<T> {
         let data = preactivations
             .as_columns()
             .iter()
@@ -107,6 +114,24 @@ impl Activation {
             .collect::<Vec<Vec<Vec<T>>>>();
 
         Tensor::from(data[0].clone())
+    }
+
+    fn derivative_naive<T: ValidNumber<T>>(&self, preactivations: &Tensor<T>) -> Tensor<T> {
+        let data = preactivations
+            .data
+            .iter()
+            .map(|x| match self {
+                Activation::None => T::from(1.0),
+                Activation::Sigmoid => Self::sigmoid_derivative(*x)[0],
+                Activation::Relu => Self::relu_derivative(*x)[0],
+                Activation::Softmax => panic!("softmax undefined for tensors not rank 2"),
+            })
+            .collect();
+
+        Tensor {
+            shape: preactivations.shape().clone(),
+            data,
+        }
     }
 
     pub fn activate_num<T: ValidNumber<T>>(&self, num: T) -> T {

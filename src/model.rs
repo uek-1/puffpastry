@@ -31,11 +31,6 @@ impl<T: ValidNumber<T>> Model<T> {
     }
 
     fn forward_pass(&self, input: &Tensor<T>) -> Result<(Vec<Tensor<T>>, Vec<Tensor<T>>), ()> {
-        // Input should be a column vector
-        if input.rank() != 2 || input.shape()[1] != 1 {
-            panic!("ERROR")
-        }
-
         let mut temp: Tensor<T> = input.clone();
         let mut z_steps: Vec<Tensor<T>> = vec![];
         let mut a_steps: Vec<Tensor<T>> = vec![temp.clone()];
@@ -61,8 +56,10 @@ impl<T: ValidNumber<T>> Model<T> {
         let mut weight_updates: Vec<Option<Tensor<T>>> = vec![];
         let mut prev_layer: Option<&Box<dyn Layer<T>>> = None;
         let mut step_gradient = loss_gradient;
+        let mut current_activation: Option<Tensor<T>> = None;
 
         for (num, layer) in self.layers.iter().rev().enumerate() {
+            println!("\n {num:?} {layer:.5?} \n");
             let current_preactivation = z_steps
                 .pop()
                 .expect("Backprop couldn't find required preactivations!");
@@ -72,7 +69,10 @@ impl<T: ValidNumber<T>> Model<T> {
 
             // How the next (in model) layer's preactivation depends on this layers activation
             let partial_prevpreactiv_activation = match prev_layer {
-                Some(prev) => prev.input_derivative(&previous_activation, &step_gradient)?,
+                Some(prev) => {
+                    let current_activation = current_activation.as_ref().ok_or(())?;
+                    prev.input_derivative(&current_activation, &step_gradient)?
+                }
                 None => step_gradient.clone(),
             };
 
@@ -107,7 +107,7 @@ impl<T: ValidNumber<T>> Model<T> {
                 _ => {
                     step_gradient = match partial_activation_preactiv {
                         Some(tens) => tens.elementwise_product(&partial_prevpreactiv_activation)?,
-                        None => step_gradient,
+                        None => partial_prevpreactiv_activation,
                     }
                 }
             };
@@ -117,6 +117,7 @@ impl<T: ValidNumber<T>> Model<T> {
 
             weight_updates.push(partial_loss_weight);
             prev_layer = Some(layer);
+            current_activation = Some(previous_activation.clone());
         }
 
         // Note weight updates stores the LAST layers' weight FIRST!
@@ -129,19 +130,14 @@ impl<T: ValidNumber<T>> Model<T> {
         output: &Tensor<T>,
     ) -> Result<(Vec<Option<Tensor<T>>>, T), ()> {
         let result = self.evaluate(input)?;
-        // println!("\nRES {result:?} \n REAL {output:?}\n");
         let loss: T = self.loss.calculate_loss(result, output.clone())?;
 
         let (z_steps, mut a_steps) = self.forward_pass(input)?;
 
-        // TODO use popped a_step to calculate loss gradient.
-        //a_steps.pop();
         let last_activation = a_steps
             .pop()
             .expect("No activations created during forward pass!");
         let loss_gradient = self.loss.get_gradient(last_activation, output.clone())?;
-
-        // println!("loss grad {loss_gradient:?}");
 
         Ok((self.backward_pass(a_steps, z_steps, loss_gradient)?, loss))
     }
@@ -290,6 +286,8 @@ mod test {
             vec![13.0, 14.0, 15.0, 16.0],
         ]]);
 
+        let output = Tensor::column(vec![1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+
         let mut model: Model<f64> = Model::new(Loss::MeanSquaredError);
         model.push_layer(Conv2d::from_size(
             vec![1, 4, 4],
@@ -309,9 +307,12 @@ mod test {
         model.push_layer(Flatten {});
         model.push_layer(Dense::from_size(32, 10, Activation::Softmax));
 
-        let res = model.evaluate(&input).unwrap();
+        let (weight_updates, loss) = model.one_pass(&input, &output).unwrap();
 
-        println!("{res:?}");
+        println!("\nWEIGHT UPDATES: \n");
+        println!("{weight_updates:#?}");
+        println!("\nLoss: \n");
+        println!("{loss:#?}");
         assert!(false)
     }
 }
