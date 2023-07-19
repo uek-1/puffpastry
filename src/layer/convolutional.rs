@@ -108,7 +108,7 @@ impl<T: ValidNumber<T>> Conv2d<T> {
             panic!()
         };
 
-        let range_depth = 0..filter_depth;
+        let range_depth = 0..filter_depth; //here filter_depth == input_depth
         let range_height = output_height..(output_height + filter_height);
         let range_width = output_width..(output_width + filter_width);
 
@@ -117,14 +117,62 @@ impl<T: ValidNumber<T>> Conv2d<T> {
                 for width in range_width.clone() {
                     let filter_weight = *self
                         .weights
-                        .get(&[output_depth, depth, height, width])
-                        .unwrap();
+                        .get(&[
+                            output_depth,
+                            depth,
+                            height - output_height,
+                            width - output_width,
+                        ])
+                        .expect("There should always be a weight here!");
 
+                    //SAFETY, loc is created by iterating through step_grad.
                     let step_grad_derivative = *step_grad.get(loc).unwrap();
 
                     match out.get_mut(&[depth, height, width]) {
-                        Some(x) => *x = filter_weight * step_grad_derivative,
+                        //broek!
+                        Some(x) => *x = *x + (filter_weight * step_grad_derivative),
                         None => panic!(),
+                    }
+                }
+            }
+        }
+    }
+
+    fn weights_derivative_helper(
+        &self,
+        loc: &[usize],
+        input: &Tensor<T>,
+        step_grad: &Tensor<T>,
+        out: &mut Tensor<T>,
+    ) {
+        let &[_, filter_depth, filter_height, filter_width] = &self.weights.shape()[..] else {
+            panic!()
+        };
+
+        let &[output_depth, output_height, output_width] = loc else {
+            panic!()
+        };
+
+        let range_depth = 0..filter_depth;
+        let range_height = output_height..(output_height + filter_height);
+        let range_width = output_width..(output_width + filter_width);
+
+        let step_grad_derivative = *step_grad.get(loc).unwrap();
+
+        for depth in range_depth {
+            for height in range_height.clone() {
+                for width in range_width.clone() {
+                    let input_at_loc = *input.get(&[depth, height, width]).unwrap_or(&T::from(0.0));
+
+                    // subtract origin (output) to get relative (filter) positions
+                    match out.get_mut(&[
+                        output_depth, // thisis teh filter number
+                        depth,
+                        height - output_height,
+                        width - output_width,
+                    ]) {
+                        Some(x) => *x = *x + (input_at_loc * step_grad_derivative),
+                        None => panic!("There should always be a weight in this space"),
                     }
                 }
             }
@@ -192,7 +240,30 @@ impl<T: ValidNumber<T>> Layer<T> for Conv2d<T> {
         step_grad: &Tensor<T>,
         input: &Tensor<T>,
     ) -> Result<Option<Tensor<T>>, ()> {
-        todo!()
+        let &[input_depth, input_height, input_width] = &self.input_shape[..] else {
+            panic!("Should be unreachable! - input shape should be rank 3 for conv")
+        };
+
+        let [output_depth, output_height, output_width] = step_grad.shape()[..] else {
+            panic!("Should be unreachable - output shape should be rank 3 for conv")
+        };
+
+        let mut out = Tensor::new(self.weights.shape().clone());
+
+        for depth in 0..output_depth {
+            for height in 0..output_height {
+                for width in 0..output_width {
+                    self.weights_derivative_helper(
+                        &[depth, width, height],
+                        input,
+                        step_grad,
+                        &mut out,
+                    );
+                }
+            }
+        }
+
+        Ok(Some(out))
     }
 }
 
