@@ -65,11 +65,13 @@ impl Loss {
                     .map(|(res, expec)| (res.into(), expec.into()))
                     .find(|(_, expec): &(f64, f64)| *expec == 1.0)
                     .and_then(|(res, _)| {
-                        // clipped to 1000.0
-                        let out = res.ln();
-                        if 1000.0 < -1.0 * out || out.is_nan() {
-                            return Some(T::from(-1000.0));
-                        }
+                        //Softmax due to floating point accuracy may output zeros, which causes out = infinity. To prevent this, we clip res to 10^-5.
+                        let out = if res < 0.000001 || res.is_nan() {
+                            (0.000001f64).ln()
+                        } else {
+                            res.ln()
+                        };
+
                         Some(T::from(out))
                     })
                     .unwrap(),
@@ -103,20 +105,18 @@ impl Loss {
         if result.shape() != expected.shape() || result.shape()[1] != 1 {
             return Err(());
         }
-        // clipped to 1000.0 as max
+        // clips predictions to a minimum of 10^-6
         let data: Vec<Vec<T>> = result
             .as_rows()
             .iter()
             .zip(expected.as_rows().iter())
             .map(|(res, expec)| (res.data[0].into(), expec.data[0].into()))
             .map(|(res, expec): (f64, f64)| {
-                vec![T::from(
-                    if 1000.0 < expec * (1.0 / res) || (1.0 / res).is_nan() {
-                        -1000.0
-                    } else {
-                        -1.0 * expec * (1.0 / res)
-                    },
-                )]
+                vec![T::from(if (1.0 / res).is_nan() || res < 0.000001 {
+                    -1.0 * expec * (100000.0)
+                } else {
+                    -1.0 * expec * (1.0 / res)
+                })]
             })
             .collect();
 

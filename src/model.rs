@@ -31,6 +31,7 @@ impl<T: ValidNumber<T>> Model<T> {
     }
 
     fn forward_pass(&self, input: &Tensor<T>) -> Result<(Vec<Tensor<T>>, Vec<Tensor<T>>), ()> {
+        // println!("input {input:?}");
         let mut temp: Tensor<T> = input.clone();
         let mut z_steps: Vec<Tensor<T>> = vec![];
         let mut a_steps: Vec<Tensor<T>> = vec![temp.clone()];
@@ -40,6 +41,8 @@ impl<T: ValidNumber<T>> Model<T> {
             let a = layer.activate(&z)?;
             temp = a.clone();
 
+            // println!(" pre-act {:?}", z.data[..10].to_vec());
+            // println!(" act {:?}\n\n", a.data[..10].to_vec());
             z_steps.push(z);
             a_steps.push(a);
         }
@@ -59,7 +62,7 @@ impl<T: ValidNumber<T>> Model<T> {
         let mut current_activation: Option<Tensor<T>> = None;
 
         for (num, layer) in self.layers.iter().rev().enumerate() {
-            println!("\n {num:?} {layer:.5?} \n");
+            // println!("\n {num:?} {layer:.5?} \n");
             let current_preactivation = z_steps
                 .pop()
                 .expect("Backprop couldn't find required preactivations!");
@@ -181,6 +184,7 @@ impl<T: ValidNumber<T>> Model<T> {
     ) -> Result<(), ()> {
         // VERY INTENSIVE! WILL SLOW DOWN NETWORK SIGNFICANTLY!
         for layer in 0..self.layers.len() {
+            println!("{layer}");
             let Some(update) = weight_updates
                 .pop()
                 .expect("Couldn't find weight updates for layer {layer}") 
@@ -245,21 +249,21 @@ impl<T: ValidNumber<T>> Model<T> {
 
         for epoch in 0..epochs {
             println!("EPOCH #{epoch}");
-            let (mut average_loss, mut inputs) = (0.0, 0.0);
+            let (mut average_loss, mut total_loss, mut inputs) = (0.0, 0.0, 0.0);
             for (input, output) in data_iter.clone() {
                 // println!("train input - {:?} output - {:?}", input, output);
                 let (weight_updates, loss) = self.one_pass(input, output)?;
-                // println!("INPUT {inputs:?} LOSS {loss:?}");
-                //self.gradient_check(weight_updates.clone(), input, output, 0.01)?;
+                println!("INPUT {inputs:?} AVERAGE LOSS {}", total_loss / inputs);
+                // self.gradient_check(weight_updates.clone(), input, output, 0.0001)?;
                 self.update_weights(weight_updates, learning_rate)?;
 
                 // println!("l1w = {}", self.layers[0].get_weights());
 
-                average_loss += loss.into();
+                total_loss += loss.into();
                 inputs += 1.0;
             }
 
-            average_loss = average_loss / inputs;
+            average_loss = total_loss / inputs;
             println!("{average_loss}");
         }
 

@@ -4,10 +4,22 @@ use rand::{self, Rng};
 use std::fmt;
 
 fn main() {
-    let mut model: Model<f64> = Model::from_layers(
-        vec![Dense::from_size(784, 10, Activation::Softmax)],
-        Loss::CategoricalCrossEntropy,
-    );
+    let mut model: Model<f64> = Model::new(Loss::CategoricalCrossEntropy);
+
+    model.push_layer(Conv2d::from_size(
+        vec![1, 28, 28],
+        3,
+        32,
+        (1, 1),
+        Activation::Relu,
+    ));
+
+    model.push_layer(MaxPool2d::new(2, 2));
+    model.push_layer(Flatten {});
+    model.push_layer(Dense::from_size(32 * 14 * 14, 100, Activation::Relu));
+    // Output values of ^ are too large, causing softmax to output 0.0s into the CCE and introducing NANs into the weights.
+    model.push_layer(Dense::from_size(100, 10, Activation::Softmax));
+    // model.push_layer(Dense::from_size(28 * 28, 10, Activation::Softmax));
 
     let mut train: Vec<Tensor<f64>> = vec![];
 
@@ -35,19 +47,23 @@ fn main() {
 
             validate.push(Tensor::column(val_vec));
 
-            train.push(Tensor::column(
-                x.into_iter()
-                    .skip(1)
-                    .map(|x| x.parse::<f64>().unwrap() / 255.0)
-                    .collect(),
-            ));
+            let image_data: Vec<f64> = x
+                .into_iter()
+                .skip(1)
+                .map(|x| x.parse::<f64>().unwrap() / 255.0)
+                .collect();
+
+            train.push(Tensor {
+                shape: vec![1, 28, 28],
+                data: image_data,
+            });
         }
     }
 
     println!("{} \n {}", validate[0], Pretty(train[0].data.clone()));
 
     model
-        .fit(train.clone(), validate.clone(), 5, 0.002)
+        .fit(train.clone(), validate.clone(), 3, 200.0)
         .expect("failed to train");
 
     println!("trained model : \n");

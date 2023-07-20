@@ -168,16 +168,16 @@ impl Activation {
 
     pub fn softmax<T: ValidNumber<T>>(num: T, classes: Vec<T>) -> T {
         // To saturate to zero instead of infinity, subtract max(classes) from top and bottom.
-        /*let max_classes : f64 = classes
+        let max_classes: f64 = classes
             .iter()
             .map(|x| (*x).into())
             .max_by(|a, b| a.total_cmp(b))
             .unwrap();
-        */
-        let top: f64 = (num.into() - 0.0).exp();
-        let bottom: f64 = classes
-            .iter()
-            .fold(0.0, |sum: f64, x: &T| sum + ((*x).into() - 0.0).exp());
+
+        let top: f64 = (num.into() - max_classes).exp();
+        let bottom: f64 = classes.iter().fold(0.0, |sum: f64, x: &T| {
+            sum + ((*x).into() - max_classes).exp()
+        });
         let out = T::from(top / bottom);
 
         //println!("softmax ({:?}, {:?}) = {:?}", top, bottom, out);
