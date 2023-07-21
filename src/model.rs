@@ -199,9 +199,9 @@ impl<T: ValidNumber<T>> Model<T> {
 
             let param_count = layer_weights.data.len();
 
-            for param in 0..param_count {
+            for param in (0..param_count).step_by(100) {
                 // Check only 5 trainable values per layer.
-                if param > 5 {
+                if param > 10 * 100 {
                     break;
                 }
 
@@ -212,19 +212,20 @@ impl<T: ValidNumber<T>> Model<T> {
                 inc_weights.data[param] = inc_weights.data[param] + T::from(epsilon);
                 dec_weights.data[param] = dec_weights.data[param] - T::from(epsilon);
 
-                self.layers[layer].set_weights(inc_weights);
+                self.layers[layer].set_weights(inc_weights)?;
                 let (_, inc) = self
                     .one_pass(input, output)
                     .expect("Failed to train during gradient checking!");
 
-                self.layers[layer].set_weights(dec_weights);
+                self.layers[layer].set_weights(dec_weights)?;
                 let (_, dec) = self
                     .one_pass(input, output)
                     .expect("Failed to train during gradient checking!");
 
-                self.layers[layer].set_weights(layer_weights.clone());
+                self.layers[layer].set_weights(layer_weights.clone())?;
 
                 let res = (inc - dec) / T::from(2.0 * epsilon);
+                // println!("{res:?}, {original:?}");
                 match (original - res).into().abs() < epsilon {
                     true => (),
                     false => {
@@ -255,6 +256,7 @@ impl<T: ValidNumber<T>> Model<T> {
                 let (weight_updates, loss) = self.one_pass(input, output)?;
                 println!("INPUT {inputs:?} AVERAGE LOSS {}", total_loss / inputs);
                 // self.gradient_check(weight_updates.clone(), input, output, 0.0001)?;
+                // println!("{weight_updates:?}");
                 self.update_weights(weight_updates, learning_rate)?;
 
                 // println!("l1w = {}", self.layers[0].get_weights());

@@ -11,12 +11,12 @@ fn main() {
         3,
         32,
         (1, 1),
-        Activation::Relu,
+        Activation::None,
     ));
 
     model.push_layer(MaxPool2d::new(2, 2));
     model.push_layer(Flatten {});
-    model.push_layer(Dense::from_size(32 * 14 * 14, 100, Activation::Relu));
+    model.push_layer(Dense::from_size(32 * 14 * 14, 100, Activation::None));
     // Output values of ^ are too large, causing softmax to output 0.0s into the CCE and introducing NANs into the weights.
     model.push_layer(Dense::from_size(100, 10, Activation::Softmax));
     // model.push_layer(Dense::from_size(28 * 28, 10, Activation::Softmax));
@@ -30,7 +30,7 @@ fn main() {
     let labels = 10;
 
     for (num, record) in mnist_reader.records().enumerate() {
-        if num > 1000 {
+        if num > 10 {
             break;
         }
 
@@ -62,27 +62,34 @@ fn main() {
 
     println!("{} \n {}", validate[0], Pretty(train[0].data.clone()));
 
+    println!("{:?}", model.layers.last());
+    let data1 = model.layers.last().unwrap().get_weights().unwrap().data;
+
     model
-        .fit(train.clone(), validate.clone(), 3, 200.0)
+        .fit(train.clone(), validate.clone(), 1, 0.00007)
         .expect("failed to train");
 
     println!("trained model : \n");
-    //println!("{:?}", model);
+    println!("{:?}", model.layers.last());
 
-    for i in 0..10 {
-        println!(
-            "testing on input {} : \n {}",
-            validate[i].clone(),
-            Pretty(train[i].data.clone())
-        );
+    let data2 = model.layers.last().unwrap().get_weights().unwrap().data;
 
-        let res = model.evaluate(&train[i]).unwrap();
-        println!("{:?}", res);
-        println!(
-            "Calculated loss for this input {:?}",
-            model.loss.calculate_loss(res, validate[i].clone())
-        );
-    }
+    assert_ne!(data1, data2);
+
+    // for i in 0..10 {
+    //     println!(
+    //         "testing on input {} : \n {}",
+    //         validate[i].clone(),
+    //         Pretty(train[i].data.clone())
+    //     );
+
+    //     let res = model.evaluate(&train[i]).unwrap();
+    //     println!("{:?}", res);
+    //     println!(
+    //         "Calculated loss for this input {:?}",
+    //         model.loss.calculate_loss(res, validate[i].clone())
+    //     );
+    // }
 }
 
 pub struct Pretty(Vec<f64>);
