@@ -113,6 +113,8 @@ impl Activation {
             })
             .collect::<Vec<Vec<Vec<T>>>>();
 
+        println!("{:?}", Tensor::from(data[0].clone()));
+
         Tensor::from(data[0].clone())
     }
 
@@ -174,6 +176,8 @@ impl Activation {
             .max_by(|a, b| a.total_cmp(b))
             .unwrap();
 
+        // let max_classes = 0.0;
+
         let top: f64 = (num.into() - max_classes).exp();
         let bottom: f64 = classes.iter().fold(0.0, |sum: f64, x: &T| {
             sum + ((*x).into() - max_classes).exp()
@@ -183,19 +187,17 @@ impl Activation {
         //println!("softmax ({:?}, {:?}) = {:?}", top, bottom, out);
         //println!("max_classes - {max_classes}");
 
+        // println!("{out:?}");
+        // assert!(out <= T::from(1.0));
         out
     }
 
     fn softmax_derivative<T: ValidNumber<T>>(neuron: usize, classes: Vec<T>) -> Vec<T> {
-        //ERROR: Softmax has {classes.len()} outputs and input nerons which are all codependent. Here we
-        //only calculate the effect an input neuron has on its respective output activation,
-        //ignoring the fact that the input neuron affects all {classes.len()} outputs.
-        classes
-            .iter()
-            .enumerate()
-            .map(|(idx, output)| {
-                let smax_output = Self::softmax(*output, classes.clone());
-                let smax_input = Self::softmax(classes[neuron], classes.clone());
+        let smax_input = Self::softmax(classes[neuron], classes.clone());
+
+        (0..classes.len())
+            .map(|idx| {
+                let smax_output = Self::softmax(classes[idx], classes.clone());
                 let delta = match idx == neuron {
                     true => T::from(1.0),
                     false => T::from(0.0),

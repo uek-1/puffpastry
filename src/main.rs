@@ -29,8 +29,11 @@ fn main() {
 
     let labels = 10;
 
+    let mut zero_count = 0;
+    let train_count = 10;
+
     for (num, record) in mnist_reader.records().enumerate() {
-        if num > 10 {
+        if num > train_count {
             break;
         }
 
@@ -51,6 +54,12 @@ fn main() {
                 .into_iter()
                 .skip(1)
                 .map(|x| x.parse::<f64>().unwrap() / 255.0)
+                .map(|x| {
+                    if x == 0.0 {
+                        zero_count += 1
+                    };
+                    x
+                })
                 .collect();
 
             train.push(Tensor {
@@ -60,36 +69,46 @@ fn main() {
         }
     }
 
-    println!("{} \n {}", validate[0], Pretty(train[0].data.clone()));
+    println!(
+        "zero count {}, train_count: {}, train_pixels: {}, proportion: {}",
+        zero_count,
+        train_count,
+        train_count * 784,
+        zero_count as f64 / (train_count as f64 * 784.0)
+    );
 
-    println!("{:?}", model.layers.last());
+    // return ();
+
+    // println!("{} \n {}", validate[0], Pretty(train[0].data.clone()));
+
+    // println!("{:?}", model.layers.last());
     let data1 = model.layers.last().unwrap().get_weights().unwrap().data;
 
     model
-        .fit(train.clone(), validate.clone(), 1, 0.00007)
+        .fit(train.clone(), validate.clone(), 1, 0.02)
         .expect("failed to train");
 
     println!("trained model : \n");
-    println!("{:?}", model.layers.last());
+    // println!("{:?}", model.layers.last());
 
     let data2 = model.layers.last().unwrap().get_weights().unwrap().data;
 
     assert_ne!(data1, data2);
 
-    // for i in 0..10 {
-    //     println!(
-    //         "testing on input {} : \n {}",
-    //         validate[i].clone(),
-    //         Pretty(train[i].data.clone())
-    //     );
+    for i in 0..2 {
+        println!(
+            "testing on input {} : \n {}",
+            validate[i].clone(),
+            Pretty(train[i].data.clone())
+        );
 
-    //     let res = model.evaluate(&train[i]).unwrap();
-    //     println!("{:?}", res);
-    //     println!(
-    //         "Calculated loss for this input {:?}",
-    //         model.loss.calculate_loss(res, validate[i].clone())
-    //     );
-    // }
+        let res = model.evaluate(&train[i]).unwrap();
+        println!("{:?}", res);
+        println!(
+            "Calculated loss for this input {:?}",
+            model.loss.calculate_loss(res, validate[i].clone())
+        );
+    }
 }
 
 pub struct Pretty(Vec<f64>);

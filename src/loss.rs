@@ -120,6 +120,8 @@ impl Loss {
             })
             .collect();
 
+        println!("{data:?}");
+
         Ok(Tensor::from(data))
     }
 }
