@@ -1,8 +1,7 @@
-use rand::Rng;
+use rand_distr::{Distribution, Normal};
 use std::fmt::Debug;
 
 use crate::activation::Activation;
-use crate::rand;
 use crate::tensor::Tensor;
 use crate::vec_tools::ValidNumber;
 pub mod convolutional;

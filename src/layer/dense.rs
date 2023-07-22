@@ -1,4 +1,4 @@
-use super::{Activation, Layer, Rng, Tensor, ValidNumber};
+use super::{Activation, Distribution, Layer, Normal, Tensor, ValidNumber};
 
 #[derive(Clone, Debug)]
 pub struct Dense<T: ValidNumber<T>> {
@@ -10,10 +10,15 @@ pub struct Dense<T: ValidNumber<T>> {
 impl<T: ValidNumber<T>> Dense<T> {
     pub fn from_size(input_size: usize, output_size: usize, activation: Activation) -> Dense<T> {
         let mut rng = rand::thread_rng();
+        // HE initalization
+        let connections = input_size * output_size;
+        let stdev = (2.0 / connections as f64).sqrt();
+        let normal = Normal::new(0.0, stdev).unwrap();
+
         let mut weights = Tensor::new(vec![output_size, input_size]);
 
         for elem in &mut weights.data {
-            *elem = T::from(rng.gen_range(-1.0..1.0));
+            *elem = T::from(normal.sample(&mut rng));
         }
 
         let biases = Tensor::new(vec![output_size, 1]);
@@ -68,7 +73,7 @@ impl<T: ValidNumber<T>> Layer<T> for Dense<T> {
         Some(self.activation.clone())
     }
 
-    fn input_derivative(&self, input: &Tensor<T>, step_grad: &Tensor<T>) -> Result<Tensor<T>, ()> {
+    fn input_derivative(&self, _input: &Tensor<T>, step_grad: &Tensor<T>) -> Result<Tensor<T>, ()> {
         self.weights.transposed().matrix_multiply(step_grad)
     }
 

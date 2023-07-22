@@ -109,7 +109,6 @@ impl Activation {
                         Activation::Softmax => Self::softmax_derivative(num, x.data.clone()),
                     })
                     .collect::<Vec<Vec<T>>>()
-                    .clone()
             })
             .collect::<Vec<Vec<Vec<T>>>>();
 
@@ -213,8 +212,6 @@ impl Activation {
 
 #[cfg(test)]
 mod test {
-    use crate::vec_tools::MatrixMultiply;
-
     use super::*;
 
     #[test]

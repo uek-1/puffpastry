@@ -20,7 +20,7 @@ impl<T: ValidNumber<T>> Layer<T> for Flatten {
         None
     }
 
-    fn set_weights(&mut self, new_weights: Tensor<T>) -> Result<(), ()> {
+    fn set_weights(&mut self, _new_weights: Tensor<T>) -> Result<(), ()> {
         Err(())
     }
 
@@ -39,8 +39,8 @@ impl<T: ValidNumber<T>> Layer<T> for Flatten {
 
     fn weights_derivative(
         &self,
-        step_grad: &Tensor<T>,
-        input: &Tensor<T>,
+        _step_grad: &Tensor<T>,
+        _input: &Tensor<T>,
     ) -> Result<Option<Tensor<T>>, ()> {
         Ok(None)
     }

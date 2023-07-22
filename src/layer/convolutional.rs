@@ -1,4 +1,4 @@
-use super::{Activation, Layer, Rng, Tensor, ValidNumber};
+use super::{Activation, Distribution, Layer, Normal, Tensor, ValidNumber};
 
 #[derive(Clone, Debug)]
 pub struct Conv2d<T: ValidNumber<T>> {
@@ -18,13 +18,19 @@ impl<T: ValidNumber<T>> Conv2d<T> {
         activation: Activation,
     ) -> Self {
         let mut rng = rand::thread_rng();
+
+        // HE initalization
+        let connections: usize = input_shape.iter().product();
+        let stdev = (2.0 / connections as f64).sqrt();
+        let normal = Normal::new(0.0, stdev).unwrap();
+
         let input_depth = input_shape[0];
         let mut weights = Tensor::new(vec![filter_count, input_depth, filter_size, filter_size]);
 
         weights
             .data
             .iter_mut()
-            .for_each(|x| *x = T::from(rng.gen_range(-1.0..1.0)));
+            .for_each(|x| *x = T::from(normal.sample(&mut rng)));
 
         Conv2d {
             weights,
@@ -76,7 +82,6 @@ impl<T: ValidNumber<T>> Conv2d<T> {
         for fnum in 0..filter_count {
             for height in 0..(input_height) {
                 for width in 0..(input_width) {
-                    let loc = vec![fnum, height, width];
                     let item = self.convolve2d(input, vec![height, width], fnum)?;
                     data.push(item);
                 }
@@ -85,7 +90,7 @@ impl<T: ValidNumber<T>> Conv2d<T> {
 
         Ok(Tensor {
             shape: vec![filter_count, input_height, input_width],
-            data: data,
+            data,
         })
     }
 
@@ -128,10 +133,8 @@ impl<T: ValidNumber<T>> Conv2d<T> {
                     //SAFETY, loc is created by iterating through step_grad.
                     let step_grad_derivative = *step_grad.get(loc).unwrap();
 
-                    match out.get_mut(&[depth, height, width]) {
-                        //broek!
-                        Some(x) => *x = *x + (filter_weight * step_grad_derivative),
-                        None => (),
+                    if let Some(x) = out.get_mut(&[depth, height, width]) {
+                        *x = *x + (filter_weight * step_grad_derivative)
                     }
                 }
             }
@@ -211,7 +214,7 @@ impl<T: ValidNumber<T>> Layer<T> for Conv2d<T> {
         Some(self.activation.clone())
     }
 
-    fn input_derivative(&self, input: &Tensor<T>, step_grad: &Tensor<T>) -> Result<Tensor<T>, ()> {
+    fn input_derivative(&self, _input: &Tensor<T>, step_grad: &Tensor<T>) -> Result<Tensor<T>, ()> {
         // step_grad is dj/dz at this point, so it's the size of the output of this layer. This function calculates the derivative for the input
 
         let &[input_depth, input_height, input_width] = &self.input_shape[..] else {
@@ -240,7 +243,7 @@ impl<T: ValidNumber<T>> Layer<T> for Conv2d<T> {
         step_grad: &Tensor<T>,
         input: &Tensor<T>,
     ) -> Result<Option<Tensor<T>>, ()> {
-        let &[input_depth, input_height, input_width] = &self.input_shape[..] else {
+        let &[_input_depth, _input_height, _input_width] = &self.input_shape[..] else {
             panic!("Should be unreachable! - input shape should be rank 3 for conv")
         };
 
@@ -326,13 +329,13 @@ mod test {
     fn convolve_multiple_test2() {
         let mut data = vec![];
 
-        let filter1 = vec![vec![vec![1.0, 0.0], vec![1.0, 0.0]]]
+        vec![vec![vec![1.0, 0.0], vec![1.0, 0.0]]]
             .into_iter()
             .flatten()
             .flatten()
             .for_each(|x| data.push(x));
 
-        let filter2 = vec![vec![vec![1.0, 1.0], vec![0.0, 0.0]]]
+        vec![vec![vec![1.0, 1.0], vec![0.0, 0.0]]]
             .into_iter()
             .flatten()
             .flatten()
@@ -342,7 +345,7 @@ mod test {
 
         let weights = Tensor {
             shape: vec![2, 1, 2, 2],
-            data: data,
+            data,
         };
 
         let conv2d: Conv2d<f64> = Conv2d {

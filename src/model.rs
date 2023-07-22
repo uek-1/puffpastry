@@ -1,4 +1,5 @@
-use super::{layer::*, Activation, Loss, Tensor, ValidNumber};
+use super::{layer::*, Loss, Tensor, ValidNumber};
+use std::io::Write;
 
 #[derive(Debug)]
 pub struct Model<T: ValidNumber<T>> {
@@ -10,7 +11,7 @@ impl<T: ValidNumber<T>> Model<T> {
     pub fn new(loss: Loss) -> Model<T> {
         Model {
             layers: vec![],
-            loss: loss,
+            loss,
         }
     }
 
@@ -82,7 +83,7 @@ impl<T: ValidNumber<T>> Model<T> {
             // How this layer's activation (if it exists) depends on this layer's preactivation
             let partial_activation_preactiv: Option<Tensor<T>> = layer
                 .get_activation()
-                .and_then(|activation| Some(activation.derivative(&current_preactivation)));
+                .map(|activation| activation.derivative(&current_preactivation));
 
             // Elementwise multiply - Hadamard product, unless it's the last layer (first
             // iteration).
@@ -153,7 +154,7 @@ impl<T: ValidNumber<T>> Model<T> {
         self.layers
             .iter_mut()
             .zip(weight_updates.iter().rev())
-            .map(|(layer, update)| {
+            .try_for_each(|(layer, update)| {
                 let Some(update) = update else {
                     return Ok(())
                 };
@@ -167,11 +168,9 @@ impl<T: ValidNumber<T>> Model<T> {
                     Err(())
                 } else {
                     let new_weights = current_weights - (update.clone() * learning_rate);
-                    layer.set_weights(new_weights);
-                    Ok(())
+                    layer.set_weights(new_weights)
                 }
             })
-            .collect::<Result<(), ()>>()
     }
 
     // TODO: Very hacky implementation, needs fixing!
@@ -247,26 +246,24 @@ impl<T: ValidNumber<T>> Model<T> {
         learning_rate: T,
     ) -> Result<(), ()> {
         let data_iter = train.iter().zip(validate.iter());
+        let mut stdout = std::io::stdout();
 
         for epoch in 0..epochs {
             println!("EPOCH #{epoch}");
-            let (mut average_loss, mut total_loss, mut inputs) = (0.0, 0.0, 0.0);
+            let (mut total_loss, mut inputs) = (0.0, 0.0);
             for (input, output) in data_iter.clone() {
-                // println!("train input - {:?} output - {:?}", input, output);
                 let (weight_updates, loss) = self.one_pass(input, output)?;
-                println!("INPUT {inputs:?} AVERAGE LOSS {}", total_loss / inputs);
+                print!("\rINPUT {inputs:?} AVERAGE LOSS {}", total_loss / inputs);
+                stdout.flush();
                 // self.gradient_check(weight_updates.clone(), input, output, 0.0001)?;
-                // println!("{weight_updates:?}");
                 self.update_weights(weight_updates, learning_rate)?;
-
-                // println!("l1w = {}", self.layers[0].get_weights());
 
                 total_loss += loss.into();
                 inputs += 1.0;
             }
 
-            average_loss = total_loss / inputs;
-            println!("{average_loss}");
+            let average_loss = total_loss / inputs;
+            println!("\n Epoch loss: {average_loss}");
         }
 
         Ok(())
@@ -282,6 +279,7 @@ impl<T: ValidNumber<T>> Model<T> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::Activation;
 
     #[test]
     fn conv_feedforward_test() {

@@ -11,7 +11,7 @@ pub struct Tensor<T: ValidNumber<T>> {
 /// Functions for all ranks
 impl<T: ValidNumber<T>> Tensor<T> {
     pub fn new(shape: Vec<usize>) -> Tensor<T> {
-        let size = shape.iter().fold(1, |size, x| size * x);
+        let size = shape.iter().product();
         Tensor {
             shape: shape,
             data: vec![T::from(0.0); size],
@@ -31,7 +31,7 @@ impl<T: ValidNumber<T>> Tensor<T> {
     }
 
     pub fn calculate_data_index(&self, loc: &[usize]) -> usize {
-        loc.into_iter()
+        loc.iter()
             .rev()
             .enumerate()
             .fold(0, |data_idx, (loc_idx, loc_val)| {
@@ -39,13 +39,7 @@ impl<T: ValidNumber<T>> Tensor<T> {
                     + loc_val
                         * match loc_idx {
                             0 => 1,
-                            _ => self
-                                .shape
-                                .clone()
-                                .iter()
-                                .rev()
-                                .take(loc_idx)
-                                .fold(1, |prod, x| prod * x),
+                            _ => self.shape.clone().iter().rev().take(loc_idx).product(),
                         }
             })
     }
@@ -55,10 +49,7 @@ impl<T: ValidNumber<T>> Tensor<T> {
             return None;
         }
 
-        if (0..loc.len())
-            .into_iter()
-            .any(|idx| loc[idx] >= self.shape[idx])
-        {
+        if (0..loc.len()).any(|idx| loc[idx] >= self.shape[idx]) {
             return None;
         }
 
@@ -68,6 +59,10 @@ impl<T: ValidNumber<T>> Tensor<T> {
 
     pub fn get_mut(&mut self, loc: &[usize]) -> Option<&mut T> {
         if loc.len() != self.rank() {
+            return None;
+        }
+
+        if (0..loc.len()).any(|idx| loc[idx] >= self.shape[idx]) {
             return None;
         }
 

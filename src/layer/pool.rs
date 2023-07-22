@@ -65,9 +65,9 @@ impl MaxPool2d {
             }
         }
 
-        let mut scaled_loc = loc.clone();
-        scaled_loc[1] = scaled_loc[1] / window_height;
-        scaled_loc[2] = scaled_loc[2] / window_width;
+        let mut scaled_loc = loc;
+        scaled_loc[1] /= window_height;
+        scaled_loc[2] /= window_width;
 
         let step_grad_comp = *step_grad.get(&scaled_loc).unwrap();
         *out.get_mut(&max_loc).unwrap() = step_grad_comp;
@@ -114,7 +114,7 @@ impl<T: ValidNumber<T>> Layer<T> for MaxPool2d {
         None
     }
 
-    fn set_weights(&mut self, new_weights: Tensor<T>) -> Result<(), ()> {
+    fn set_weights(&mut self, _new_weights: Tensor<T>) -> Result<(), ()> {
         Err(())
     }
 
@@ -149,8 +149,8 @@ impl<T: ValidNumber<T>> Layer<T> for MaxPool2d {
 
     fn weights_derivative(
         &self,
-        input: &Tensor<T>,
-        step_grad: &Tensor<T>,
+        _input: &Tensor<T>,
+        _step_grad: &Tensor<T>,
     ) -> Result<Option<Tensor<T>>, ()> {
         Ok(None)
     }

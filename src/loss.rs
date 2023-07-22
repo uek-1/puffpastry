@@ -13,9 +13,9 @@ impl Loss {
         expected: Tensor<T>,
     ) -> Result<T, ()> {
         match self {
-            Loss::MeanSquaredError => Loss::mean_squared_error(result, expected).ok_or_else(|| ()),
+            Loss::MeanSquaredError => Loss::mean_squared_error(result, expected).ok_or(()),
             Loss::CategoricalCrossEntropy => {
-                Loss::categorical_cross_entropy(result, expected).ok_or_else(|| ())
+                Loss::categorical_cross_entropy(result, expected).ok_or(())
             }
         }
     }
@@ -64,7 +64,7 @@ impl Loss {
                     .zip(expected.data.into_iter())
                     .map(|(res, expec)| (res.into(), expec.into()))
                     .find(|(_, expec): &(f64, f64)| *expec == 1.0)
-                    .and_then(|(res, _)| {
+                    .map(|(res, _)| {
                         //Softmax due to floating point accuracy may output zeros, which causes out = infinity. To prevent this, we clip res to 10^-5.
                         let out = if res < 0.000001 || res.is_nan() {
                             (0.000001f64).ln()
@@ -72,7 +72,7 @@ impl Loss {
                             res.ln()
                         };
 
-                        Some(T::from(out))
+                        T::from(out)
                     })
                     .unwrap(),
         )
@@ -119,8 +119,6 @@ impl Loss {
                 })]
             })
             .collect();
-
-        println!("{data:?}");
 
         Ok(Tensor::from(data))
     }
