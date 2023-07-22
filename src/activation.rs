@@ -113,7 +113,7 @@ impl Activation {
             })
             .collect::<Vec<Vec<Vec<T>>>>();
 
-        println!("{:?}", Tensor::from(data[0].clone()));
+        // println!("{:?}", Tensor::from(data[0].clone()));
 
         Tensor::from(data[0].clone())
     }

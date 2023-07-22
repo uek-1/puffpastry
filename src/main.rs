@@ -11,15 +11,26 @@ fn main() {
         3,
         32,
         (1, 1),
-        Activation::None,
+        Activation::Relu,
     ));
 
     model.push_layer(MaxPool2d::new(2, 2));
+
+    // model.push_layer(Conv2d::from_size(
+    //     vec![8, 7, 7],
+    //     3,
+    //     16,
+    //     (1, 1),
+    //     Activation::Relu,
+    // ));
+
+    // model.push_layer(MaxPool2d::new(2, 2));
+
     model.push_layer(Flatten {});
-    model.push_layer(Dense::from_size(32 * 14 * 14, 100, Activation::None));
+    // model.push_layer(Dense::from_size(16 * 7 * 7, 100, Activation::Relu));
     // Output values of ^ are too large, causing softmax to output 0.0s into the CCE and introducing NANs into the weights.
-    model.push_layer(Dense::from_size(100, 10, Activation::Softmax));
-    // model.push_layer(Dense::from_size(28 * 28, 10, Activation::Softmax));
+    model.push_layer(Dense::from_size(32 * 14 * 14, 10, Activation::Softmax));
+    // model.push_layer(Dense::from_size(100, 10, Activation::Softmax));
 
     let mut train: Vec<Tensor<f64>> = vec![];
 
@@ -30,7 +41,7 @@ fn main() {
     let labels = 10;
 
     let mut zero_count = 0;
-    let train_count = 10;
+    let train_count = 1000;
 
     for (num, record) in mnist_reader.records().enumerate() {
         if num > train_count {
@@ -85,7 +96,7 @@ fn main() {
     let data1 = model.layers.last().unwrap().get_weights().unwrap().data;
 
     model
-        .fit(train.clone(), validate.clone(), 1, 0.02)
+        .fit(train.clone(), validate.clone(), 3, 0.02)
         .expect("failed to train");
 
     println!("trained model : \n");

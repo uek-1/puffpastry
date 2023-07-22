@@ -13,7 +13,7 @@ impl<T: ValidNumber<T>> Dense<T> {
         let mut weights = Tensor::new(vec![output_size, input_size]);
 
         for elem in &mut weights.data {
-            *elem = T::from(rng.gen_range(0.0..1.0));
+            *elem = T::from(rng.gen_range(-1.0..1.0));
         }
 
         let biases = Tensor::new(vec![output_size, 1]);

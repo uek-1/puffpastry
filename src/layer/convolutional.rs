@@ -24,7 +24,7 @@ impl<T: ValidNumber<T>> Conv2d<T> {
         weights
             .data
             .iter_mut()
-            .for_each(|x| *x = T::from(rng.gen_range(0.0..1.0)));
+            .for_each(|x| *x = T::from(rng.gen_range(-1.0..1.0)));
 
         Conv2d {
             weights,
