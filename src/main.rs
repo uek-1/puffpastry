@@ -1,11 +1,9 @@
-use csv::{Reader, StringRecord};
+use csv::Reader;
 use puffpastry::*;
-use rand::{self, Rng};
 use std::fmt;
 
 fn main() {
     let mut model: Model<f64> = Model::new(Loss::CategoricalCrossEntropy);
-
     model.push_layer(Conv2d::from_size(
         vec![1, 28, 28],
         3,
@@ -13,38 +11,45 @@ fn main() {
         (1, 1),
         Activation::Relu,
     ));
-
     model.push_layer(MaxPool2d::new(2, 2));
+    model.push_layer(Flatten::new());
+    model.push_layer(Dense::from_size(32 * 14 * 14, 10, Activation::Softmax));
 
-    model.push_layer(Conv2d::from_size(
-        vec![32, 14, 14],
-        3,
-        64,
-        (1, 1),
-        Activation::Relu,
-    ));
+    let mut train_inputs: Vec<Tensor<f64>> = vec![];
+    let mut train_outputs: Vec<Tensor<f64>> = vec![];
+    load_mnist_with(&mut train_inputs, &mut train_outputs, 5000);
 
-    model.push_layer(MaxPool2d::new(2, 2));
+    model
+        .fit(train_inputs.clone(), train_outputs.clone(), 3, 0.02)
+        .expect("failed to train");
 
-    model.push_layer(Flatten {});
-    // model.push_layer(Dense::from_size(32 * 14 * 14, 100, Activation::Relu));
-    // Output values of ^ are too large, causing softmax to output 0.0s into the CCE and introducing NANs into the weights.
-    // model.push_layer(Dense::from_size(100, 10, Activation::Softmax));
-    model.push_layer(Dense::from_size(64 * 7 * 7, 10, Activation::Softmax));
+    for i in 0..5 {
+        println!(
+            "testing on input {} : \n {}",
+            train_outputs[i].clone(),
+            Pretty(train_inputs[i].data.clone())
+        );
 
-    let mut train: Vec<Tensor<f64>> = vec![];
+        let res = model.evaluate(&train_inputs[i]).unwrap();
+        println!("{:?}", res);
+        println!(
+            "Calculated loss for this input {:?}",
+            model.loss.calculate_loss(res, train_outputs[i].clone())
+        );
+    }
+}
 
-    let mut validate: Vec<Tensor<f64>> = vec![];
-
+fn load_mnist_with<T: ValidNumber<T>>(
+    train: &mut Vec<Tensor<T>>,
+    validate: &mut Vec<Tensor<T>>,
+    samples: usize,
+) {
     let mut mnist_reader = Reader::from_path("data/mnist_train.csv").unwrap();
-
     let labels = 10;
-
     let mut zero_count = 0;
-    let train_count = 1000;
 
     for (num, record) in mnist_reader.records().enumerate() {
-        if num > train_count {
+        if num > samples {
             break;
         }
 
@@ -56,12 +61,12 @@ fn main() {
                 .next()
                 .unwrap();
 
-            let mut val_vec = vec![0.0; labels];
-            val_vec[label] = 1.0;
+            let mut val_vec = vec![T::from(0.0); labels];
+            val_vec[label] = T::from(1.0);
 
             validate.push(Tensor::column(val_vec));
 
-            let image_data: Vec<f64> = x
+            let image_data: Vec<T> = x
                 .into_iter()
                 .skip(1)
                 .map(|x| x.parse::<f64>().unwrap() / 255.0)
@@ -71,6 +76,7 @@ fn main() {
                     };
                     x
                 })
+                .map(|x| T::from(x))
                 .collect();
 
             train.push(Tensor {
@@ -79,56 +85,15 @@ fn main() {
             });
         }
     }
-
-    println!(
-        "zero count {}, train_count: {}, train_pixels: {}, proportion: {}",
-        zero_count,
-        train_count,
-        train_count * 784,
-        zero_count as f64 / (train_count as f64 * 784.0)
-    );
-
-    // return ();
-
-    // println!("{} \n {}", validate[0], Pretty(train[0].data.clone()));
-
-    // println!("{:?}", model.layers.last());
-    let data1 = model.layers.last().unwrap().get_weights().unwrap().data;
-
-    model
-        .fit(train.clone(), validate.clone(), 3, 0.02)
-        .expect("failed to train");
-
-    println!("trained model : \n");
-    // println!("{:?}", model.layers.last());
-
-    let data2 = model.layers.last().unwrap().get_weights().unwrap().data;
-
-    assert_ne!(data1, data2);
-
-    for i in 0..2 {
-        println!(
-            "testing on input {} : \n {}",
-            validate[i].clone(),
-            Pretty(train[i].data.clone())
-        );
-
-        let res = model.evaluate(&train[i]).unwrap();
-        println!("{:?}", res);
-        println!(
-            "Calculated loss for this input {:?}",
-            model.loss.calculate_loss(res, validate[i].clone())
-        );
-    }
 }
 
-pub struct Pretty(Vec<f64>);
+pub struct Pretty<T: ValidNumber<T>>(Vec<T>);
 
-impl fmt::Display for Pretty {
+impl<T: ValidNumber<T>> fmt::Display for Pretty<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for row in 0..28 {
             for col in 0..28 {
-                let elem = match self.0[28 * row + col] < 0.01 {
+                let elem = match self.0[28 * row + col] < T::from(0.01) {
                     true => "  ",
                     false => "1.0",
                 };

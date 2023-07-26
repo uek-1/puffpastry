@@ -3,6 +3,12 @@ use super::{Activation, Layer, Tensor, ValidNumber};
 #[derive(Debug)]
 pub struct Flatten {}
 
+impl Flatten {
+    pub fn new() -> Self {
+        Flatten {}
+    }
+}
+
 impl<T: ValidNumber<T>> Layer<T> for Flatten {
     fn evaluate(&self, input: &Tensor<T>) -> Result<Tensor<T>, ()> {
         self.preactivate(input)
