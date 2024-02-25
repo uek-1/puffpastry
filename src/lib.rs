@@ -1,4 +1,6 @@
+extern crate puffpastry_tensor_macro;
 extern crate rand;
+pub use puffpastry_tensor_macro::tensor;
 pub mod activation;
 pub mod layer;
 pub mod loss;
