@@ -16,24 +16,24 @@ model.push_layer(Dense::from_size(2, 1, Activation::None));
 
 
 let train_inputs = vec![
-    Tensor::column(vec![0.0, 0.0]),
-    Tensor::column(vec![1.0, 0.0]),
-    Tensor::column(vec![0.0, 1.0]),
-    Tensor::column(vec![1.0, 1.0]),
+    tensor!([[0.0], [0.0]]),
+    tensor!([[1.0], [0.0]]),
+    tensor!([[0.0], [1.0]]),
+    tensor!([[1.0], [1.0]]),
 ];
 
 let train_outputs = vec![
-    Tensor::column(vec![0.0]),
-    Tensor::column(vec![1.0]),
-    Tensor::column(vec![1.0]),
-    Tensor::column(vec![0.0]),
+    tensor!([[0.0]]),
+    tensor!([[1.0]]),
+    tensor!([[1.0]]),
+    tensor!([[0.0]]),
 ];
 
 // fit(&mut self, inputs, outputs, epochs, learning_rate) -> Result
 model.fit(train_inputs, train_outputs, 100, 1.2).unwrap();  
 
 // evaluate(&self, input: Tensor) -> Result<Tensor>
-model.evaluate(&Tensor::column(vec![1.0, 0.0])).unwrap();
+model.evaluate(&tensor!([[1.0], [0.0]]).unwrap();
 // stdout: Tensor {shape: [1], data: [0.9179620463347642]}
 ```
 
