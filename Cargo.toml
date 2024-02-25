@@ -1,3 +1,4 @@
+workspace = { members = ["puffpastry_tensor_macro"] }
 [package]
 name = "puffpastry"
 version = "0.1.0"
@@ -26,6 +27,7 @@ path = "src/main.rs"
 csv = "1.2.2"
 rand = "0.8.5"
 rand_distr = "0.4.3"
+puffpastry_tensor_macro = {path = "./puffpastry_tensor_macro"}
 
 
 

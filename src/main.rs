@@ -165,4 +165,12 @@ mod test {
 
         assert!(sum <= 1.0)
     }
+
+    #[test]
+    fn proc_macro_test() {
+        let x = tensor!([[1, 2, 3], [1, 2, 3], [1, 2, 3]]);
+        println!("{x}");
+        assert!(x.shape == vec![3, 3]);
+        assert!(x.get(&[1, 2]) == Some(&3.0));
+    }
 }
